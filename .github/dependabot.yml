@@ -5,8 +5,11 @@ updates:
     schedule:
       interval: weekly
     groups:
+      # Only minor/patch dev updates are grouped (and auto-merged, see
+      # workflows/dependabot-auto-merge.yml). Majors come as separate PRs.
       dev-dependencies:
         dependency-type: development
+        update-types: [minor, patch]
   - package-ecosystem: github-actions
     directory: /
     schedule:
