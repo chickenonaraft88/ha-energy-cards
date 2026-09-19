@@ -2,6 +2,8 @@
 
 A Home Assistant Lovelace card showing a 24h half-hourly energy price graph, built for the [Octopus Energy integration](https://github.com/BottlecapDave/HomeAssistant-OctopusEnergy).
 
+<p><img src="docs/preview-dark.png" alt="Energy Price Graph Card, dark theme" width="49%"> <img src="docs/preview-light.png" alt="Energy Price Graph Card, light theme" width="49%"></p>
+
 - Line and area chart coloured by price: negative is cyan to blue, 0–5p green, 5–20p green to orange, 20–30p orange to red, 30p+ red. Follows the HA dark/light theme.
 - Header shows the current price (`NOW · HH:mm`, with `· FREE` at 0p or below) and the next price (`NEXT · HH:mm`).
 - Active or upcoming reduced-usage sessions (e.g. Octoplus Power Down) are shaded purple.
