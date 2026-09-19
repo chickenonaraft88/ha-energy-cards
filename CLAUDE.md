@@ -1,6 +1,28 @@
 # Energy Price Graph Card
 
-Lit/TypeScript Lovelace card, bundled with esbuild to `dist/energy-price-graph-card.js`. Commands: `npm run typecheck`, `npm run build`, `npm run screenshot`.
+Lit/TypeScript Lovelace card, bundled with esbuild to `dist/energy-price-graph-card.js`.
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | Biome check; fails on warnings. `npm run lint:fix` applies fixes. |
+| `npm test` | Vitest unit tests in `test/` (pure logic in `src/data.ts`, `src/colors.ts`, `src/stub.ts`) |
+| `npm run build` | Bundle to `dist/` |
+| `npm run size` | Fails if the bundle is over 40 kB (run after build) |
+| `npm run test:e2e` | Playwright tests in `e2e/` against `preview/index.html`, using installed Chrome (`PW_CHANNEL=msedge` for Edge; run after build) |
+| `npm run screenshot` | Render preview PNGs, see below |
+
+CI (`.github/workflows/ci.yml`) runs all of these except `screenshot`, and none is optional. Run the same set locally before opening a PR.
+
+## Conventions
+
+- Biome owns formatting (single quotes, 2 spaces, 120 columns, LF line endings). Run `npm run lint:fix` rather than formatting by hand.
+- Card logic that doesn't need a DOM belongs in a pure module under `src/` with a test in `test/`. `energy-price-graph-card.ts` registers a custom element on import, so it can't be unit tested directly.
+- Bug fixes get a regression test. Layout bugs (clipping, overlap) go in `e2e/card.e2e.ts`.
+- Work on a branch and open a PR rather than pushing to `main`.
+- Releases: push a tag like `v0.1.3`; the release workflow builds and attaches `energy-price-graph-card.js`, which is what HACS installs. Dependabot opens weekly dependency PRs.
 
 ## Screenshots
 
