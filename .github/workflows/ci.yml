@@ -18,9 +18,8 @@ jobs:
 
       - run: npm ci
       - run: npm run typecheck
-      # Optional scripts: skipped until a package.json defines them.
-      - run: npm run lint --if-present
-      - run: npm test --if-present
+      - run: npm run lint
+      - run: npm test
       - run: npm run build
-      - run: npm run size --if-present
-      - run: npm run test:e2e --if-present
+      - run: npm run size
+      - run: npm run test:e2e
