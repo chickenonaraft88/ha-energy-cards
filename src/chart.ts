@@ -1,5 +1,5 @@
 import { nothing, svg, type TemplateResult } from 'lit';
-import { fmtTick, yAxis } from './axis';
+import { fmtTick, xTicks, yAxis } from './axis';
 import { gradientStops } from './colors';
 import { fmtTime } from './data';
 import type { Rate, Session } from './types';
@@ -21,7 +21,6 @@ export interface ChartInput {
 }
 
 const PAD = { left: 36, right: 16, top: 28, bottom: 22 };
-const HOUR = 3600000;
 
 const badge = (x: number, y: number, text: string, color: string) => {
   const w = text.length * 6.4 + 12;
@@ -60,11 +59,10 @@ export const renderChart = (c: ChartInput): TemplateResult => {
     return svg`<stop offset=${off} stop-color=${col}></stop>`;
   });
 
-  // x-axis: a label every 2h from the window start
-  const xLabels: TemplateResult[] = [];
-  for (let t = c.start; t < c.end; t += 2 * HOUR) {
-    xLabels.push(svg`<text x=${x(t)} y=${H - 5} text-anchor="middle" class="axis">${fmtTime(t)}</text>`);
-  }
+  // x-axis: labels from the window start, spaced to fit the plot width
+  const xLabels = xTicks(c.start, c.end, plotW).map(
+    (t) => svg`<text x=${x(t)} y=${H - 5} text-anchor="middle" class="axis">${fmtTime(t)}</text>`,
+  );
 
   const grid = ticks.map(
     (v) => svg`<line x1=${PAD.left} x2=${W - PAD.right} y1=${y(v)} y2=${y(v)} class=${v === 0 ? 'zero' : 'grid'}></line>
