@@ -49,13 +49,24 @@ class EnergyPriceGraphCard extends LitElement {
   private _observed?: Element;
   private _timer?: number;
 
-  static getStubConfig(_hass?: HomeAssistant, entities: string[] = []): Partial<EnergyPriceGraphCardConfig> {
-    const find = (re: RegExp) => entities.find((e) => re.test(e)) ?? '';
+  static getStubConfig(hass?: HomeAssistant, entities: string[] = []): Partial<EnergyPriceGraphCardConfig> {
+    // `entities` is only a subset of the user's entities, so search all states.
+    const ids = hass ? Object.keys(hass.states) : entities;
+    const find = (re: RegExp) => ids.find((e) => re.test(e) && !e.includes('_export_')) ?? '';
+
+    // Pick one (import) meter from its day-rates entity, then derive its siblings.
+    const dayRates = find(/^event\..*_current_day_rates$/);
+    const prefix = dayRates.replace(/^event\./, '').replace(/_current_day_rates$/, '');
+    const sibling = (domain: string, suffix: string) => {
+      const id = `${domain}.${prefix}_${suffix}`;
+      return prefix && ids.includes(id) ? id : '';
+    };
+
     return {
-      current_rate_entity: find(/^sensor\..*_current_rate$/),
-      next_rate_entity: find(/^sensor\..*_next_rate$/),
-      current_day_rates_entity: find(/^event\..*_current_day_rates$/),
-      next_day_rates_entity: find(/^event\..*_next_day_rates$/),
+      current_rate_entity: sibling('sensor', 'current_rate'),
+      next_rate_entity: sibling('sensor', 'next_rate'),
+      current_day_rates_entity: dayRates,
+      next_day_rates_entity: sibling('event', 'next_day_rates'),
       incentive_events_entity: find(/^event\..*_octoplus_power_down_events$/),
     };
   }
