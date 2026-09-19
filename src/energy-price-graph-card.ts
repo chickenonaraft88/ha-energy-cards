@@ -82,6 +82,8 @@ class EnergyPriceGraphCard extends LitElement {
     super.connectedCallback();
     // Re-render every minute so the NOW marker and labels keep moving.
     this._timer = window.setInterval(() => this._tick++, 60000);
+    // disconnectedCallback dropped the observer; a card that was only moved isn't necessarily re-rendered.
+    if (this.hasUpdated) this._observe();
   }
 
   disconnectedCallback(): void {
@@ -93,6 +95,10 @@ class EnergyPriceGraphCard extends LitElement {
   }
 
   protected updated(): void {
+    this._observe();
+  }
+
+  private _observe(): void {
     // The chart container only exists once config + hass are set, so attach lazily.
     const el = this.renderRoot.querySelector('.chart');
     if (!el || this._observed === el) return;
