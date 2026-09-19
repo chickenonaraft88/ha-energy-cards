@@ -23,8 +23,7 @@ export const mergeRates = (...lists: Rate[][]): Rate[] => {
   return [...byStart.values()].sort((a, b) => a.start - b.start);
 };
 
-export const rateAt = (rates: Rate[], t: number): Rate | undefined =>
-  rates.find((r) => t >= r.start && t < r.end);
+export const rateAt = (rates: Rate[], t: number): Rate | undefined => rates.find((r) => t >= r.start && t < r.end);
 
 export const parseSessions = (entity: HassEntity | undefined, attribute: string): Session[] => {
   const raw = entity?.attributes?.[attribute];

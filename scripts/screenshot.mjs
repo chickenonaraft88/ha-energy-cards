@@ -1,10 +1,11 @@
 // Renders preview/index.html in headless Chrome/Edge and writes PNGs to preview/out/.
 // Usage: npm run screenshot            (needs `npm run build` first)
 //        CHROME=/path/to/chrome npm run screenshot
-import puppeteer from 'puppeteer-core';
-import { createServer } from 'node:http';
+
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { extname, join, normalize, resolve } from 'node:path';
+import puppeteer from 'puppeteer-core';
 
 const root = resolve(import.meta.dirname, '..');
 const outDir = join(root, 'preview', 'out');
