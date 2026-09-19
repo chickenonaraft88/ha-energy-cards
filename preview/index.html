@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Energy Price Graph Card preview</title>
+<style>
+  :root {
+    --primary-text-color: #212121;
+    --secondary-text-color: #727272;
+    --card-background-color: #fff;
+    --error-color: #db4437;
+    --page-bg: #f2f2f7;
+  }
+  html[data-theme="dark"] {
+    --primary-text-color: #e1e1e1;
+    --secondary-text-color: #9b9b9b;
+    --card-background-color: #1c1c1e;
+    --page-bg: #111;
+  }
+  body { margin: 0; padding: 16px; background: var(--page-bg); font-family: Roboto, "Segoe UI", sans-serif; }
+  #card { max-width: 560px; }
+</style>
+</head>
+<body>
+<div id="card"></div>
+<script>
+  // Stand-in for HA's <ha-card>.
+  customElements.define('ha-card', class extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: 'open' }).innerHTML =
+        '<style>:host{display:block;background:var(--card-background-color);border-radius:12px;color:var(--primary-text-color)}</style><slot></slot>';
+    }
+  });
+
+  const q = new URLSearchParams(location.search);
+  const dark = q.get('theme') === 'dark';
+  const scenario = q.get('scenario') || 'default';
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  if (q.get('width')) document.getElementById('card').style.width = q.get('width') + 'px';
+
+  // Pin "now" so screenshots are reproducible (default 17:10 local).
+  const [hh, mm] = (q.get('time') || '17:10').split(':').map(Number);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const fixedNow = today.getTime() + (hh * 60 + mm) * 60000;
+  Date.now = () => fixedNow;
+
+  // Agile-style half-hourly prices in pence: overnight dip, morning bump, evening peak.
+  const pence = (h) => {
+    const g = (c, w, a) => a * Math.exp(-Math.pow((h - c) / w, 2));
+    let p = 14 + g(8, 1.6, 8) + g(17.5, 1.7, 22) + g(13, 2.5, -6) + g(3, 2.2, -19);
+    if (scenario === 'flat') p = 24 + g(17.5, 2, 4);
+    return p;
+  };
+  const day = (offset) =>
+    Array.from({ length: 48 }, (_, i) => {
+      const start = today.getTime() + offset * 864e5 + i * 18e5;
+      return {
+        start: new Date(start).toISOString(),
+        end: new Date(start + 18e5).toISOString(),
+        value_inc_vat: Math.round(pence(((start - today.getTime()) / 36e5) % 24) * 10) / 1000,
+      };
+    });
+
+  const today_rates = day(0);
+  const slot = (t) => today_rates.concat(day(1)).find((r) => Date.parse(r.start) <= t && t < Date.parse(r.end));
+  const cur = slot(fixedNow), next = slot(fixedNow + 18e5);
+  const sessionStart = today.getTime() + 17 * 36e5 + 30 * 6e4;
+
+  const states = {
+    'event.import_current_day_rates': { state: 'x', attributes: { rates: today_rates } },
+    'event.import_next_day_rates': { state: 'x', attributes: { rates: day(1) } },
+    'sensor.import_current_rate': { state: String(cur.value_inc_vat), attributes: { rate: { valid_from: cur.start } } },
+    'sensor.import_next_rate': { state: String(next.value_inc_vat), attributes: { rate: { valid_from: next.start } } },
+    'event.account_octoplus_power_down_events': {
+      state: 'x',
+      attributes: {
+        joined_events: scenario === 'nosession' ? [] : [
+          { start: new Date(sessionStart).toISOString(), end: new Date(sessionStart + 36e5).toISOString() },
+        ],
+      },
+    },
+  };
+
+  const script = document.createElement('script');
+  script.type = 'module';
+  script.src = '../dist/energy-price-graph-card.js';
+  script.onload = () => {
+    const el = document.createElement('energy-price-graph-card');
+    el.setConfig({
+      type: 'custom:energy-price-graph-card',
+      current_rate_entity: 'sensor.import_current_rate',
+      next_rate_entity: 'sensor.import_next_rate',
+      current_day_rates_entity: 'event.import_current_day_rates',
+      next_day_rates_entity: 'event.import_next_day_rates',
+      incentive_events_entity: 'event.account_octoplus_power_down_events',
+    });
+    el.hass = { states, themes: { darkMode: dark } };
+    document.getElementById('card').appendChild(el);
+  };
+  document.head.appendChild(script);
+</script>
+</body>
+</html>

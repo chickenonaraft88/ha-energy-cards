@@ -46,6 +46,9 @@ incentive_events_entity: event.octopus_energy_<account>_octoplus_power_down_even
 npm install
 npm run typecheck
 npm run build
+npm run screenshot
 ```
+
+`npm run screenshot` renders the card with mock Octopus data (`preview/index.html`) in your local Chrome or Edge and writes PNGs to `preview/out/` (dark, light, mobile width, negative price). To view it live, serve the repo root (e.g. `npx serve`) and open `/preview/index.html?theme=dark`.
 
 Push a tag like `v0.1.1` to publish a release with `energy-price-graph-card.js` attached.
