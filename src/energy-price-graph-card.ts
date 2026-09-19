@@ -205,6 +205,7 @@ class EnergyPriceGraphCard extends LitElement {
                 nowColor: nowLineColor,
                 incentiveColor: pal.purple,
                 incentiveLabel,
+                unit,
               })
             : nothing
         }

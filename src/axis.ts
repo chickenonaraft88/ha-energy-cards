@@ -1,0 +1,45 @@
+const niceStep = (rough: number): number => {
+  const pow = 10 ** Math.floor(Math.log10(rough));
+  const f = rough / pow;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * pow;
+};
+
+export interface YAxis {
+  yMin: number;
+  yMax: number;
+  step: number;
+  ticks: number[];
+}
+
+/** Headroom above the highest value, as a share of the data range (about 3p on typical pence prices). */
+const HEADROOM = 0.07;
+
+/**
+ * y-axis for the visible values: min is never above 0, max leaves a little headroom, ~6 ticks on a "nice" step.
+ * Headroom scales with the data so £-scale values (0.15-0.35) get a usable axis, not one padded out to £3.
+ */
+export const yAxis = (values: number[]): YAxis => {
+  const lo = Math.min(0, ...values);
+  const max = Math.max(...values);
+  const hi = max + (max - lo || 1) * HEADROOM;
+  const step = niceStep((hi - lo) / 5);
+  const yMin = Math.floor(lo / step) * step;
+  const yMax = Math.ceil(hi / step) * step;
+  const ticks: number[] = [];
+  for (let v = yMin; v <= yMax + step / 2; v += step) ticks.push(Math.round(v * 1e6) / 1e6);
+  return { yMin, yMax, step, ticks };
+};
+
+/** Short symbol for the axis, from the unit's currency part: 'p/kWh' -> 'p', '£/kWh' -> '£'. */
+export const unitSymbol = (unit: string): string => unit.split('/')[0].trim();
+
+const CURRENCY_PREFIX = /^[£$€¥]$/;
+
+/** Tick label with enough decimals for the step, unit symbol prefixed for currency signs and suffixed otherwise. */
+export const fmtTick = (v: number, step: number, unit: string): string => {
+  const decimals = step > 0 ? Math.max(0, -Math.floor(Math.log10(step) + 1e-9)) : 0;
+  const num = v.toFixed(decimals);
+  const sym = unitSymbol(unit);
+  if (!CURRENCY_PREFIX.test(sym)) return `${num}${sym}`;
+  return num.startsWith('-') ? `-${sym}${num.slice(1)}` : `${sym}${num}`;
+};
