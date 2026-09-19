@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  clampHours,
   currentSlotStart,
   fmtTime,
   mergeRates,
   nextSlotStart,
   parseRates,
   parseSessions,
+  parseStateNumber,
   rateAt,
   sessionActive,
   slotOverlapsSession,
@@ -138,5 +140,52 @@ describe('slot maths', () => {
   it('fmtTime zero-pads local time', () => {
     expect(fmtTime(at(7, 5))).toBe('07:05');
     expect(fmtTime(at(0, 0))).toBe('00:00');
+  });
+});
+
+describe('parseStateNumber', () => {
+  it('parses numeric states', () => {
+    expect(parseStateNumber('0.15')).toBe(0.15);
+    expect(parseStateNumber('0')).toBe(0);
+    expect(parseStateNumber('-0.02')).toBe(-0.02);
+  });
+
+  it('treats blank states as missing rather than 0', () => {
+    expect(parseStateNumber('')).toBeUndefined();
+    expect(parseStateNumber('   ')).toBeUndefined();
+  });
+
+  it('returns undefined for non-numeric or non-string states', () => {
+    expect(parseStateNumber('unavailable')).toBeUndefined();
+    expect(parseStateNumber('unknown')).toBeUndefined();
+    expect(parseStateNumber('Infinity')).toBeUndefined();
+    expect(parseStateNumber(undefined)).toBeUndefined();
+    expect(parseStateNumber(null)).toBeUndefined();
+  });
+});
+
+describe('clampHours', () => {
+  it('passes through values in range', () => {
+    expect(clampHours(24)).toBe(24);
+    expect(clampHours(6)).toBe(6);
+    expect(clampHours(48)).toBe(48);
+  });
+
+  it('clamps zero, negative and oversized values into 6-48', () => {
+    expect(clampHours(0)).toBe(6);
+    expect(clampHours(-5)).toBe(6);
+    expect(clampHours(100)).toBe(48);
+  });
+
+  it('defaults missing or non-numeric values to 24', () => {
+    expect(clampHours(undefined)).toBe(24);
+    expect(clampHours(null)).toBe(24);
+    expect(clampHours('')).toBe(24);
+    expect(clampHours('abc')).toBe(24);
+    expect(clampHours(Number.NaN)).toBe(24);
+  });
+
+  it('accepts numeric strings from YAML', () => {
+    expect(clampHours('12')).toBe(12);
   });
 });

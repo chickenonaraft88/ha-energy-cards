@@ -2,12 +2,14 @@ import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { renderChart } from './chart';
 import { palette, priceColor } from './colors';
 import {
+  clampHours,
   currentSlotStart,
   fmtTime,
   mergeRates,
   nextSlotStart,
   parseRates,
   parseSessions,
+  parseStateNumber,
   rateAt,
   sessionActive,
   slotOverlapsSession,
@@ -144,8 +146,8 @@ class EnergyPriceGraphCard extends LitElement {
 
     // Current / next price: prefer the dedicated sensors, fall back to the rates list.
     const price = (entityId: string | undefined, fallback: number | undefined) => {
-      const raw = entityId ? Number(hass.states[entityId]?.state) : NaN;
-      return Number.isFinite(raw) ? raw * mult : fallback;
+      const raw = entityId ? parseStateNumber(hass.states[entityId]?.state) : undefined;
+      return raw === undefined ? fallback : raw * mult;
     };
     const nextStart = nextSlotStart(now);
     const curPrice = price(cfg.current_rate_entity, rateAt(rates, now)?.value);
@@ -170,7 +172,7 @@ class EnergyPriceGraphCard extends LitElement {
     else if ((curPrice ?? 1) <= 0) curLabel += ` · ${freeLabel}`;
     const nextLabel = `NEXT · ${fmtTime(nextTime)}${nextIncentive ? ` · ${incentiveLabel}` : ''}`;
 
-    const spanHours = cfg.hours ?? 24;
+    const spanHours = clampHours(cfg.hours);
     const start = new Date(now);
     start.setMinutes(0, 0, 0);
 

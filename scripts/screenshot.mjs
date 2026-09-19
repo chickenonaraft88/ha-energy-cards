@@ -35,11 +35,14 @@ await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}/preview/index.html`;
 
 mkdirSync(outDir, { recursive: true });
+const cfg = (o) => `cfg=${encodeURIComponent(JSON.stringify(o))}`;
 const shots = [
   ['dark', 'theme=dark'],
   ['light', 'theme=light'],
   ['dark-mobile', 'theme=dark&width=360'],
   ['dark-free', 'theme=dark&time=03:10'],
+  ['dark-blank-state', 'theme=dark&blank=1'],
+  ['dark-hours-zero', `theme=dark&${cfg({ hours: 0 })}`],
 ];
 const b = await puppeteer.launch({ executablePath: browser, headless: true });
 try {

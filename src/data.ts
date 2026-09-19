@@ -54,3 +54,21 @@ export const fmtTime = (t: number): string => {
   const d = new Date(t);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 };
+
+/** Parse a sensor state as a number; blank, non-numeric and non-finite states (e.g. '', 'unavailable') give undefined. */
+export const parseStateNumber = (state: unknown): number | undefined => {
+  if (typeof state !== 'string' || state.trim() === '') return undefined;
+  const n = Number(state);
+  return Number.isFinite(n) ? n : undefined;
+};
+
+export const MIN_HOURS = 6;
+export const MAX_HOURS = 48;
+export const DEFAULT_HOURS = 24;
+
+/** Chart span in hours, limited to the editor's range so YAML can't produce a zero or negative window. */
+export const clampHours = (hours: unknown): number => {
+  const n = Number(hours);
+  if (hours == null || hours === '' || !Number.isFinite(n)) return DEFAULT_HOURS;
+  return Math.min(MAX_HOURS, Math.max(MIN_HOURS, n));
+};
