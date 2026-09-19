@@ -1,6 +1,9 @@
 // Renders preview/index.html in headless Chrome/Edge and writes PNGs to preview/out/.
 // Usage: npm run screenshot            (needs `npm run build` first)
 //        CHROME=/path/to/chrome npm run screenshot
+// Extra one-off shots go on the command line as name=query, so PR-specific scenarios aren't committed:
+//   npm run screenshot -- 'gbp-dark=theme=dark&cfg={"unit":"£/kWh","rate_multiplier":1}' blank=blank=1
+// The query is passed to preview/index.html (see its params: theme, time, width, scenario, blank, cfg).
 
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -35,18 +38,17 @@ await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}/preview/index.html`;
 
 mkdirSync(outDir, { recursive: true });
-const cfg = (o) => `cfg=${encodeURIComponent(JSON.stringify(o))}`;
-const gbp = { unit: '£/kWh', rate_multiplier: 1 };
 const shots = [
   ['dark', 'theme=dark'],
   ['light', 'theme=light'],
   ['dark-mobile', 'theme=dark&width=360'],
   ['dark-free', 'theme=dark&time=03:10'],
-  ['dark-blank-state', 'theme=dark&blank=1'],
-  ['dark-hours-zero', `theme=dark&${cfg({ hours: 0 })}`],
-  ['dark-gbp', `theme=dark&${cfg(gbp)}`],
-  ['light-gbp', `theme=light&${cfg(gbp)}`],
 ];
+for (const arg of process.argv.slice(2)) {
+  const [name, ...rest] = arg.split('=');
+  if (!/^[\w-]+$/.test(name) || !rest.length) throw new Error(`Bad shot "${arg}", expected name=query`);
+  shots.push([name, new URLSearchParams(rest.join('=')).toString()]);
+}
 const b = await puppeteer.launch({ executablePath: browser, headless: true });
 try {
   for (const [name, query] of shots) {
