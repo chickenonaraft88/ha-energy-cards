@@ -10,7 +10,7 @@ npm run build        # bundles to dist/energy-price-graph-card.js
 npm run typecheck
 ```
 
-Where the tooling exists on `main`, also run `npm test` (unit), `npm run lint`, `npm run size` and `npm run test:e2e` (browser) before opening a PR.
+Before opening a PR also run `npm run lint` (Biome; `npm run lint:fix` applies fixes), `npm test` (unit), `npm run size` (bundle limit) and `npm run test:e2e` (browser). CI runs all of them.
 
 ## Trying changes without Home Assistant
 
