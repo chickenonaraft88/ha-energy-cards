@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gradientStops, palette, priceColor } from '../src/colors';
+import { gradientStops, palette, priceColor, priceScale } from '../src/colors';
 
 describe('priceColor', () => {
   const p = palette(true);
@@ -37,7 +37,41 @@ describe('priceColor', () => {
   });
 });
 
+describe('priceColor with a scaled unit', () => {
+  const at = (v: number, scale: number) => priceColor(v, true, scale).toLowerCase();
+
+  it('treats £ prices the same as the equivalent pence price', () => {
+    for (const pence of [-10, -3, 0, 4, 12, 25, 45]) {
+      expect(at(pence / 100, 0.01)).toBe(at(pence, 1));
+    }
+  });
+
+  it('is red for an expensive £/kWh price instead of staying green', () => {
+    expect(at(0.45, 0.01)).toBe(palette(true).red.toLowerCase());
+  });
+});
+
+describe('priceScale', () => {
+  it('is 1 for pence and 0.01 for £', () => {
+    expect(priceScale(100)).toBe(1);
+    expect(priceScale(1)).toBe(0.01);
+  });
+
+  it('falls back to 1 for an unusable multiplier', () => {
+    expect(priceScale(0)).toBe(1);
+    expect(priceScale(-5)).toBe(1);
+    expect(priceScale(Number.NaN)).toBe(1);
+  });
+});
+
 describe('gradientStops', () => {
+  it('moves the stops with the unit scale', () => {
+    const pence = gradientStops(true, 1).map(([v, c]) => [v * 0.01, c]);
+    expect(gradientStops(true, 0.01).map(([v, c]) => [Math.round(v * 1e9) / 1e9, c])).toEqual(
+      pence.map(([v, c]) => [Math.round((v as number) * 1e9) / 1e9, c]),
+    );
+  });
+
   it('is ordered from highest to lowest value', () => {
     const vals = gradientStops(true).map(([v]) => v);
     expect(vals).toEqual([...vals].sort((a, b) => b - a));

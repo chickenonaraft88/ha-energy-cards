@@ -18,6 +18,8 @@ export interface ChartInput {
   incentiveColor: string;
   incentiveLabel: string;
   unit: string;
+  /** Price unit size relative to pence, see `priceScale`. */
+  priceScale: number;
 }
 
 const PAD = { left: 36, right: 16, top: 28, bottom: 22 };
@@ -54,7 +56,7 @@ export const renderChart = (c: ChartInput): TemplateResult => {
 
   const gid = `g-${c.uid}`;
   const cid = `c-${c.uid}`;
-  const stops = gradientStops(c.dark).map(([v, col]) => {
+  const stops = gradientStops(c.dark, c.priceScale).map(([v, col]) => {
     const off = Math.min(Math.max((yMax - v) / (yMax - yMin), 0), 1);
     return svg`<stop offset=${off} stop-color=${col}></stop>`;
   });
