@@ -36,6 +36,7 @@
   const q = new URLSearchParams(location.search);
   const dark = q.get('theme') === 'dark';
   const scenario = q.get('scenario') || 'default';
+  const blank = q.get('blank') === '1'; // rate sensors report '' instead of a number
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   if (q.get('width')) document.getElementById('card').style.width = `${q.get('width')}px`;
 
@@ -70,8 +71,8 @@
   const states = {
     'event.import_current_day_rates': { state: 'x', attributes: { rates: today_rates } },
     'event.import_next_day_rates': { state: 'x', attributes: { rates: day(1) } },
-    'sensor.import_current_rate': { state: String(cur.value_inc_vat), attributes: { rate: { valid_from: cur.start } } },
-    'sensor.import_next_rate': { state: String(next.value_inc_vat), attributes: { rate: { valid_from: next.start } } },
+    'sensor.import_current_rate': { state: blank ? '' : String(cur.value_inc_vat), attributes: { rate: { valid_from: cur.start } } },
+    'sensor.import_next_rate': { state: blank ? '' : String(next.value_inc_vat), attributes: { rate: { valid_from: next.start } } },
     'event.account_octoplus_power_down_events': {
       state: 'x',
       attributes: {
@@ -94,6 +95,7 @@
       current_day_rates_entity: 'event.import_current_day_rates',
       next_day_rates_entity: 'event.import_next_day_rates',
       incentive_events_entity: 'event.account_octoplus_power_down_events',
+      ...JSON.parse(q.get('cfg') || '{}'), // e.g. cfg={"hours":0} to override card config
     });
     el.hass = { states, themes: { darkMode: dark } };
     document.getElementById('card').appendChild(el);
