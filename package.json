@@ -1,6 +1,6 @@
 {
   "name": "energy-price-graph-card",
-  "version": "0.1.0",
+  "version": "0.1.3",
   "description": "Home Assistant Lovelace card showing a 24h half-hourly energy price graph (Octopus Energy friendly)",
   "license": "MIT",
   "type": "module",
