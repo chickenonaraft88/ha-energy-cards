@@ -1,3 +1,5 @@
+import { isCurrencyUnit } from './axis';
+
 export interface Palette {
   blue: string;
   cyan: string;
@@ -23,8 +25,12 @@ const mix = (a: string, b: string, t: number): string => {
   return `#${((1 << 24) + (ch(16) << 16) + (ch(8) << 8) + ch(0)).toString(16).slice(1)}`;
 };
 
-/** Colour for a single price (p/kWh): <0 cyan/blue, 0-5 green, 5-20 green->orange, 20-30 orange->red, 30+ red. */
-export const priceColor = (price: number, dark: boolean): string => {
+/**
+ * Colour for a single price: <0 cyan/blue, 0-5p green, 5-20p green->orange, 20-30p orange->red, 30p+ red.
+ * `scale` is the price unit's size relative to pence (see `priceScale`): 1 for pence, 0.01 for £.
+ */
+export const priceColor = (value: number, dark: boolean, scale = 1): string => {
+  const price = value / scale;
   const p = palette(dark);
   if (price < 0) return mix(p.cyan, p.blue, Math.min(Math.abs(price) / 7, 1));
   if (price < 5) return p.green;
@@ -33,15 +39,21 @@ export const priceColor = (price: number, dark: boolean): string => {
   return p.red;
 };
 
-/** Value-anchored gradient stops, highest value first. */
-export const gradientStops = (dark: boolean): Array<[number, string]> => {
+/** Value-anchored gradient stops (in the card's unit, see `priceColor`), highest value first. */
+export const gradientStops = (dark: boolean, scale = 1): Array<[number, string]> => {
   const p = palette(dark);
   return [
-    [30, p.red],
-    [20, p.orange],
-    [5, p.green],
+    [30 * scale, p.red],
+    [20 * scale, p.orange],
+    [5 * scale, p.green],
     [0, p.green],
-    [-0.001, p.cyan],
-    [-7, p.blue],
+    [-0.001 * scale, p.cyan],
+    [-7 * scale, p.blue],
   ];
 };
+
+/**
+ * Size of the displayed unit relative to pence: 0.01 for a currency unit ('£/kWh'), otherwise 1.
+ * Follows the unit, not `rate_multiplier`: a pence sensor uses a multiplier of 1 too.
+ */
+export const priceScale = (unit: string): number => (isCurrencyUnit(unit) ? 0.01 : 1);

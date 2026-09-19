@@ -3,7 +3,7 @@
 //        CHROME=/path/to/chrome npm run screenshot
 // Extra one-off shots go on the command line as name=query, so PR-specific scenarios aren't committed:
 //   npm run screenshot -- 'gbp-dark=theme=dark&cfg={"unit":"£/kWh","rate_multiplier":1}' blank=blank=1
-// The query is passed to preview/index.html (see its params: theme, time, width, scenario, blank, cfg).
+// The query is passed to preview/index.html (see its params: theme, time, width, scenario, blank, entity, cfg).
 
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
