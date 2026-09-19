@@ -12,7 +12,11 @@ For any change that can affect what the card looks like (`src/chart.ts`, `src/co
 
 1. Build and run `npm run screenshot`, then open the PNGs and check they look right.
 2. Add a scenario to the preview page or `scripts/screenshot.mjs` if the change needs a state that isn't covered.
-3. `gh` can't upload images, so end the PR description with a "Screenshots" section and tell the user which files in `preview/out/` to drag into the PR. Never commit `preview/out/` or add a branch just for images.
+3. Attach the images with `gh` (needs a version that supports `--attach`; docs: https://docs.github.com/en/github-cli/github-cli/attaching-files-with-github-cli):
+   - `gh pr create --attach 'preview/out/dark.png#Dark theme' --attach 'preview/out/light.png#Light theme' ...`
+   - or, on an existing PR, `gh pr comment <n> --attach ...` / `gh pr edit <n> --attach ...`.
+
+   Alt text goes after `#`. The same file can't be attached twice. If `gh` rejects `--attach` (older version), fall back to telling the user which files in `preview/out/` to drag into the PR. Never commit `preview/out/` or add a branch just for images.
 
 Skip screenshots for changes with no visual effect (docs, CI, types-only).
 
