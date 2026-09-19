@@ -1,4 +1,5 @@
 import { nothing, svg, type TemplateResult } from 'lit';
+import { fmtTick, yAxis } from './axis';
 import { gradientStops } from './colors';
 import { fmtTime } from './data';
 import type { Rate, Session } from './types';
@@ -16,16 +17,11 @@ export interface ChartInput {
   nowColor: string;
   incentiveColor: string;
   incentiveLabel: string;
+  unit: string;
 }
 
 const PAD = { left: 36, right: 16, top: 28, bottom: 22 };
 const HOUR = 3600000;
-
-const niceStep = (rough: number): number => {
-  const pow = 10 ** Math.floor(Math.log10(rough));
-  const f = rough / pow;
-  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * pow;
-};
 
 const badge = (x: number, y: number, text: string, color: string) => {
   const w = text.length * 6.4 + 12;
@@ -48,14 +44,7 @@ export const renderChart = (c: ChartInput): TemplateResult => {
       text-anchor="middle" fill="var(--secondary-text-color)" font-size="13">No rate data</text></svg>`;
   }
 
-  // y-axis: auto min (never above 0), max = data max + 3, ~6 ticks on a "nice" step
-  const lo = Math.min(0, ...visible.map((p) => p[1]));
-  const hi = Math.max(...visible.map((p) => p[1])) + 3;
-  const step = niceStep((hi - lo) / 5);
-  const yMin = Math.floor(lo / step) * step;
-  const yMax = Math.ceil(hi / step) * step;
-  const ticks: number[] = [];
-  for (let v = yMin; v <= yMax + step / 2; v += step) ticks.push(Math.round(v * 1e6) / 1e6);
+  const { yMin, yMax, step, ticks } = yAxis(visible.map((p) => p[1]));
 
   const x = (t: number) => PAD.left + ((t - c.start) / (c.end - c.start)) * plotW;
   const y = (v: number) => PAD.top + (1 - (v - yMin) / (yMax - yMin)) * plotH;
@@ -79,7 +68,7 @@ export const renderChart = (c: ChartInput): TemplateResult => {
 
   const grid = ticks.map(
     (v) => svg`<line x1=${PAD.left} x2=${W - PAD.right} y1=${y(v)} y2=${y(v)} class=${v === 0 ? 'zero' : 'grid'}></line>
-      <text x=${PAD.left - 6} y=${y(v) + 4} text-anchor="end" class="axis">${Math.round(v)}p</text>`,
+      <text x=${PAD.left - 6} y=${y(v) + 4} text-anchor="end" class="axis">${fmtTick(v, step, c.unit)}</text>`,
   );
 
   const sessions = c.sessions
