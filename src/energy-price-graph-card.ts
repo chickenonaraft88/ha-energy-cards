@@ -2,6 +2,7 @@ import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { renderChart } from './chart';
 import { palette, priceColor } from './colors';
 import {
+  clampHeight,
   clampHours,
   currentSlotStart,
   fmtTime,
@@ -196,7 +197,7 @@ class EnergyPriceGraphCard extends LitElement {
                 uid: this._uid,
                 rates,
                 width: this._width,
-                height: cfg.height ?? 190,
+                height: clampHeight(cfg.height),
                 dark,
                 now,
                 start: start.getTime(),

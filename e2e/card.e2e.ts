@@ -59,6 +59,19 @@ for (const [width, hours] of [
   });
 }
 
+for (const [height, expected] of [
+  [0, 100],
+  [20, 100],
+  [9000, 500],
+] as const) {
+  test(`clamps a YAML height of ${height} to ${expected}px`, async ({ page }) => {
+    await open(page, `theme=dark&cfg=${JSON.stringify({ height })}`);
+    const svg = page.locator('energy-price-graph-card svg');
+    await expect(svg).toHaveAttribute('height', String(expected));
+    await expect(svg.locator('path').first()).toBeVisible();
+  });
+}
+
 for (const width of [360, 560]) {
   test(`chart text is not clipped at ${width}px`, async ({ page }) => {
     await open(page, `theme=dark&width=${width}`);
