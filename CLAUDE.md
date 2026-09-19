@@ -32,16 +32,22 @@ CI (`.github/workflows/ci.yml`) runs all of these except `screenshot`, and none 
 
 For any change that can affect what the card looks like (`src/chart.ts`, `src/colors.ts`, `src/energy-price-graph-card.ts` styles/render, `preview/`):
 
-1. Build and run `npm run screenshot`, then open the PNGs and check they look right.
-2. Add a scenario to the preview page or `scripts/screenshot.mjs` if the change needs a state that isn't covered.
-3. Attach the images with `gh` (needs a version that supports `--attach`; docs: https://docs.github.com/en/github-cli/github-cli/attaching-files-with-github-cli):
-   - `gh pr create --attach 'preview/out/dark.png#Dark theme' --attach 'preview/out/light.png#Light theme' ...`
+Every such PR must include **before and after** screenshots, and both must show data that exercises the change. A PR without both is not ready to open.
+
+1. Pick the scenario(s) that show the change. The data has to make the difference visible: a fix for £ units needs a preview using `unit`/`rate_multiplier` for £, not the default pence data where nothing changes. If no existing scenario does, add one to the preview page or `scripts/screenshot.mjs` first (on the branch, so it is available for both runs).
+2. **Before:** with the new scenario available, check out `main` (or the PR's base), run `npm run build && npm run screenshot`, and copy the PNGs you need to `preview/out/before-<name>.png`.
+3. **After:** on the PR branch, run `npm run build && npm run screenshot`, then open the PNGs and check they look right (dark and light at minimum). Copy them to `preview/out/after-<name>.png`.
+4. Attach every pair with `gh` (needs a version that supports `--attach`; docs: https://docs.github.com/en/github-cli/github-cli/attaching-files-with-github-cli), with alt text saying which is which and what data it shows:
+   - `gh pr create --attach 'preview/out/before-dark.png#Before, dark theme, £/kWh rates' --attach 'preview/out/after-dark.png#After, dark theme, £/kWh rates' ...`
    - or, on an existing PR, `gh pr comment <n> --attach ...` / `gh pr edit <n> --attach ...`.
 
-   Alt text goes after `#`. The same file can't be attached twice. If `gh` rejects `--attach` (older version), fall back to telling the user which files in `preview/out/` to drag into the PR. Never commit `preview/out/` or add a branch just for images.
+   Alt text goes after `#`. The same file can't be attached twice, which is why before/after files are named separately. If `gh` rejects `--attach` (older version), fall back to telling the user which files in `preview/out/` to drag into the PR. Never commit `preview/out/` or add a branch just for images.
+5. In the PR description, say in one line what each pair demonstrates and which scenario/data it uses.
+
+If the change is a new visual feature with no "before" (nothing equivalent existed), say so in the description and show the after screenshots only.
 
 Skip screenshots for changes with no visual effect (docs, CI, types-only).
 
 ### Reviewing a PR
 
-For visual changes, check that the PR shows screenshots (description or comments). If they're missing, say so in the review. To verify, check out the branch, run `npm ci && npm run build && npm run screenshot`, and compare against what the PR shows. Look for clipped labels, overlapping badges, wrong colours, and both dark and light themes.
+For visual changes, check that the PR shows both before and after screenshots (description or comments) and that the data in them actually exercises the change. If either is missing, or the screenshots show default data where nothing would differ, say so in the review and treat the PR as not ready. To verify, check out the branch, run `npm ci && npm run build && npm run screenshot`, and compare against what the PR shows. Look for clipped labels, overlapping badges, wrong colours, and both dark and light themes.
