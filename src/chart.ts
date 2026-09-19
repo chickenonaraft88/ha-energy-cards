@@ -2,6 +2,7 @@ import { nothing, svg, type TemplateResult } from 'lit';
 import { fmtTick, xTicks, yAxis } from './axis';
 import { gradientStops } from './colors';
 import { fmtTime } from './data';
+import { badgeWidth, clearOf } from './layout';
 import type { Rate, Session } from './types';
 
 export interface ChartInput {
@@ -23,9 +24,11 @@ export interface ChartInput {
 }
 
 const PAD = { left: 36, right: 16, top: 28, bottom: 22 };
+/** Top edge shared by the NOW and incentive badges. */
+const BADGE_Y = PAD.top - 24;
 
 const badge = (x: number, y: number, text: string, color: string) => {
-  const w = text.length * 6.4 + 12;
+  const w = badgeWidth(text);
   return svg`<rect x=${x} y=${y} width=${w} height="16" rx="3" fill=${color}></rect>
     <text x=${x + w / 2} y=${y + 11.5} text-anchor="middle" fill="#fff" font-size="10" font-weight="600">${text}</text>`;
 };
@@ -71,25 +74,27 @@ export const renderChart = (c: ChartInput): TemplateResult => {
       <text x=${PAD.left - 6} y=${y(v) + 4} text-anchor="end" class="axis">${fmtTick(v, step, c.unit)}</text>`,
   );
 
+  const nx = x(c.now);
+  const nowVisible = c.now >= c.start && c.now <= c.end;
+  const nowBadge = { x: Math.min(nx - 17, W - PAD.right - badgeWidth('NOW')), w: badgeWidth('NOW') };
+
   const sessions = c.sessions
     .filter((s) => s.end >= c.start && s.start <= c.end)
     .map((s) => {
       const x1 = x(Math.max(s.start, c.start));
       const x2 = x(Math.min(s.end, c.end));
-      const labelW = c.incentiveLabel.length * 6.4 + 12;
+      const labelW = badgeWidth(c.incentiveLabel);
       return svg`<rect x=${x1} y=${PAD.top} width=${Math.max(x2 - x1, 1)} height=${plotH}
           fill=${c.incentiveColor} opacity=${c.dark ? 0.14 : 0.09}></rect>
         <line x1=${x1} x2=${x1} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${c.incentiveColor}></line>
         <line x1=${x2} x2=${x2} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${c.incentiveColor}></line>
-        ${badge(Math.min(x1 + 4, W - PAD.right - labelW), 2, c.incentiveLabel, c.incentiveColor)}`;
+        ${badge(clearOf(x1 + 4, labelW, nowVisible ? nowBadge : undefined, 0, W - PAD.right - labelW), BADGE_Y, c.incentiveLabel, c.incentiveColor)}`;
     });
 
-  const nx = x(c.now);
-  const nowMarker =
-    c.now >= c.start && c.now <= c.end
-      ? svg`<line x1=${nx} x2=${nx} y1=${PAD.top - 8} y2=${PAD.top + plotH} stroke=${c.nowColor}></line>
-        ${badge(Math.min(nx - 17, W - PAD.right - 34), PAD.top - 24, 'NOW', c.nowColor)}`
-      : nothing;
+  const nowMarker = nowVisible
+    ? svg`<line x1=${nx} x2=${nx} y1=${PAD.top - 8} y2=${PAD.top + plotH} stroke=${c.nowColor}></line>
+        ${badge(nowBadge.x, BADGE_Y, 'NOW', c.nowColor)}`
+    : nothing;
 
   return svg`<svg width=${W} height=${H} viewBox="0 0 ${W} ${H}" role="img" aria-label="Energy price graph">
     <defs>
