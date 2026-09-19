@@ -18,7 +18,7 @@ export interface ChartInput {
   incentiveLabel: string;
 }
 
-const PAD = { left: 36, right: 10, top: 28, bottom: 22 };
+const PAD = { left: 36, right: 16, top: 28, bottom: 22 };
 const HOUR = 3600000;
 
 const niceStep = (rough: number): number => {
@@ -73,7 +73,7 @@ export const renderChart = (c: ChartInput): TemplateResult => {
 
   // x-axis: a label every 2h from the window start
   const xLabels: TemplateResult[] = [];
-  for (let t = c.start; t <= c.end; t += 2 * HOUR) {
+  for (let t = c.start; t < c.end; t += 2 * HOUR) {
     xLabels.push(svg`<text x=${x(t)} y=${H - 5} text-anchor="middle" class="axis">${fmtTime(t)}</text>`);
   }
 
