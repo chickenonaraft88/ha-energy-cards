@@ -335,7 +335,7 @@ customElements.define('energy-price-graph-card', EnergyPriceGraphCard);
   name: 'Energy Price Graph Card',
   description: '24h half-hourly energy price graph with incentive-session shading (Octopus Energy friendly).',
   preview: false,
-  documentationURL: 'https://github.com/chickenonaraft88/energy-price-graph-card',
+  documentationURL: 'https://github.com/chickenonaraft88/ha-energy-cards',
 });
 
 console.info(`%c ENERGY-PRICE-GRAPH-CARD %c v${CARD_VERSION} `, 'color:#fff;background:#0A84FF', '');
