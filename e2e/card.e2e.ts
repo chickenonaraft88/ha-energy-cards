@@ -30,6 +30,16 @@ test('labels a negative price as FREE', async ({ page }) => {
   await expect(page.locator('energy-price-graph-card .label').first()).toHaveText('NOW · 03:00 · FREE');
 });
 
+// A sensor that already reports pence is configured with rate_multiplier 1; its prices still colour on the pence bands.
+test('colours a pence entity by pence, not by £', async ({ page }) => {
+  await open(page, 'theme=dark&entity=pence&cfg={"rate_multiplier":1}');
+  await expect(page.locator('energy-price-graph-card .value').first()).toContainText('33.70');
+  await expect(page.locator('energy-price-graph-card .value').first()).toHaveCSS('color', 'rgb(255, 69, 58)');
+  await page.goto('/preview/index.html?theme=dark&entity=pence&time=13:10&cfg={"rate_multiplier":1}');
+  await expect(page.locator('energy-price-graph-card .value').first()).toContainText('8.');
+  await expect(page.locator('energy-price-graph-card .value').first()).not.toHaveCSS('color', 'rgb(255, 69, 58)');
+});
+
 test('renders in the light theme', async ({ page }) => {
   await open(page, 'theme=light');
   await expect(page.locator('energy-price-graph-card .label').first()).toHaveText('NOW · 17:00');

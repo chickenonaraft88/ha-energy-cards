@@ -127,7 +127,7 @@ class EnergyPriceGraphCard extends LitElement {
     const mult = cfg.rate_multiplier ?? 100;
     const now = Date.now();
     const unit = cfg.unit ?? 'p/kWh';
-    const scale = priceScale(mult);
+    const scale = priceScale(unit);
     const incentiveLabel = cfg.incentive_label ?? 'POWER DOWN';
     const freeLabel = cfg.free_label ?? 'FREE';
 

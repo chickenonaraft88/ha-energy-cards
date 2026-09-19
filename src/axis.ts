@@ -49,11 +49,14 @@ export const unitSymbol = (unit: string): string => unit.split('/')[0].trim();
 
 const CURRENCY_PREFIX = /^[£$€¥]$/;
 
+/** True when the unit is priced in a whole currency ('£/kWh') rather than a subunit ('p/kWh'). */
+export const isCurrencyUnit = (unit: string): boolean => CURRENCY_PREFIX.test(unitSymbol(unit));
+
 /** Tick label with enough decimals for the step, unit symbol prefixed for currency signs and suffixed otherwise. */
 export const fmtTick = (v: number, step: number, unit: string): string => {
   const decimals = step > 0 ? Math.max(0, -Math.floor(Math.log10(step) + 1e-9)) : 0;
   const num = v.toFixed(decimals);
   const sym = unitSymbol(unit);
-  if (!CURRENCY_PREFIX.test(sym)) return `${num}${sym}`;
+  if (!isCurrencyUnit(unit)) return `${num}${sym}`;
   return num.startsWith('-') ? `-${sym}${num.slice(1)}` : `${sym}${num}`;
 };

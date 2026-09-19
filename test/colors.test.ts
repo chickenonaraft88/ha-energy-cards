@@ -52,15 +52,16 @@ describe('priceColor with a scaled unit', () => {
 });
 
 describe('priceScale', () => {
-  it('is 1 for pence and 0.01 for £', () => {
-    expect(priceScale(100)).toBe(1);
-    expect(priceScale(1)).toBe(0.01);
+  it('is 0.01 for a currency unit and 1 for pence', () => {
+    expect(priceScale('£/kWh')).toBe(0.01);
+    expect(priceScale('$/kWh')).toBe(0.01);
+    expect(priceScale('p/kWh')).toBe(1);
   });
 
-  it('falls back to 1 for an unusable multiplier', () => {
-    expect(priceScale(0)).toBe(1);
-    expect(priceScale(-5)).toBe(1);
-    expect(priceScale(Number.NaN)).toBe(1);
+  it('does not depend on rate_multiplier, so a pence sensor with a multiplier of 1 keeps the pence bands', () => {
+    // 33.7 from a pence sensor is displayed as 33.70 p/kWh and must be red, as it is with the default multiplier
+    expect(priceColor(33.7, true, priceScale('p/kWh')).toLowerCase()).toBe(palette(true).red.toLowerCase());
+    expect(priceColor(0.337, true, priceScale('£/kWh')).toLowerCase()).toBe(palette(true).red.toLowerCase());
   });
 });
 

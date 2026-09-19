@@ -1,3 +1,5 @@
+import { isCurrencyUnit } from './axis';
+
 export interface Palette {
   blue: string;
   cyan: string;
@@ -25,7 +27,7 @@ const mix = (a: string, b: string, t: number): string => {
 
 /**
  * Colour for a single price: <0 cyan/blue, 0-5p green, 5-20p green->orange, 20-30p orange->red, 30p+ red.
- * `scale` is the price unit's size relative to pence (the card's `rate_multiplier` / 100): 1 for pence, 0.01 for £.
+ * `scale` is the price unit's size relative to pence (see `priceScale`): 1 for pence, 0.01 for £.
  */
 export const priceColor = (value: number, dark: boolean, scale = 1): string => {
   const price = value / scale;
@@ -50,6 +52,8 @@ export const gradientStops = (dark: boolean, scale = 1): Array<[number, string]>
   ];
 };
 
-/** Size of the card's price unit relative to pence: `rate_multiplier` 100 (pence) -> 1, 1 (£) -> 0.01. */
-export const priceScale = (multiplier: number): number =>
-  multiplier > 0 && Number.isFinite(multiplier) ? multiplier / 100 : 1;
+/**
+ * Size of the displayed unit relative to pence: 0.01 for a currency unit ('£/kWh'), otherwise 1.
+ * Follows the unit, not `rate_multiplier`: a pence sensor uses a multiplier of 1 too.
+ */
+export const priceScale = (unit: string): number => (isCurrencyUnit(unit) ? 0.01 : 1);

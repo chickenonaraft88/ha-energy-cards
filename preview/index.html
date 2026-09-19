@@ -36,6 +36,7 @@
   const q = new URLSearchParams(location.search);
   const dark = q.get('theme') === 'dark';
   const scenario = q.get('scenario') || 'default';
+  // entity=pence: the rate entities report pence (use with cfg={"rate_multiplier":1}) instead of £
   const blank = q.get('blank') === '1'; // rate sensors report '' instead of a number
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   if (q.get('width')) document.getElementById('card').style.width = `${q.get('width')}px`;
@@ -59,7 +60,7 @@
       return {
         start: new Date(start).toISOString(),
         end: new Date(start + 18e5).toISOString(),
-        value_inc_vat: Math.round(pence(((start - today.getTime()) / 36e5) % 24) * 10) / 1000,
+        value_inc_vat: Math.round(pence(((start - today.getTime()) / 36e5) % 24) * 10) / (q.get('entity') === 'pence' ? 10 : 1000),
       };
     });
 
