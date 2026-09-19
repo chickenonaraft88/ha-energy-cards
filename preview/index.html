@@ -37,7 +37,7 @@
   const dark = q.get('theme') === 'dark';
   const scenario = q.get('scenario') || 'default';
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-  if (q.get('width')) document.getElementById('card').style.width = q.get('width') + 'px';
+  if (q.get('width')) document.getElementById('card').style.width = `${q.get('width')}px`;
 
   // Pin "now" so screenshots are reproducible (default 17:10 local).
   const [hh, mm] = (q.get('time') || '17:10').split(':').map(Number);
