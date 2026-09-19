@@ -82,6 +82,28 @@ for (const [height, expected] of [
   });
 }
 
+// At 18:10 the 17:30 session is already running, so its badge is pinned to the left edge next to the NOW badge.
+for (const width of [360, 560]) {
+  test(`NOW and POWER DOWN badges do not overlap during an active session at ${width}px`, async ({ page }) => {
+    await open(page, `theme=dark&time=18:10&width=${width}`);
+    const boxes = await page.evaluate(() => {
+      const svg = document.querySelector('energy-price-graph-card')?.shadowRoot?.querySelector('svg');
+      const rectOf = (label: string) =>
+        [...(svg?.querySelectorAll('text') ?? [])]
+          .find((t) => t.textContent === label)
+          ?.previousElementSibling?.getBoundingClientRect();
+      const pick = (r?: DOMRect) => r && { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+      return { now: pick(rectOf('NOW')), session: pick(rectOf('POWER DOWN')) };
+    });
+    const { now, session } = boxes;
+    expect(now).toBeTruthy();
+    expect(session).toBeTruthy();
+    expect(session?.top, 'badges sit at the same height').toBe(now?.top);
+    const apart = now && session && (now.right <= session.left || session.right <= now.left || now.bottom <= session.top || session.bottom <= now.top);
+    expect(apart, JSON.stringify(boxes)).toBe(true);
+  });
+}
+
 for (const width of [360, 560]) {
   test(`chart text is not clipped at ${width}px`, async ({ page }) => {
     await open(page, `theme=dark&width=${width}`);
