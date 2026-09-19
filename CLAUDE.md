@@ -26,7 +26,9 @@ CI (`.github/workflows/ci.yml`) runs all of these except `screenshot`, and none 
 
 ## Screenshots
 
-`npm run screenshot` (run `npm run build` first) renders the card with mock data and writes `preview/out/{dark,light,dark-mobile,dark-free}.png`. Use `preview/index.html?theme=dark|light&time=HH:mm&width=px&scenario=flat|nosession` to check other states.
+`npm run screenshot` (run `npm run build` first) renders the card with mock data and writes `preview/out/{dark,light,dark-mobile,dark-free}.png`. Use `preview/index.html?theme=dark|light&time=HH:mm&width=px&scenario=flat|nosession&blank=1&cfg={json}` to check other states (`blank=1` makes the rate sensors report `''`; `cfg` is merged into the card config, e.g. `cfg={"hours":0}`).
+
+Those four are the only committed shots. Scenarios for a single change are one-offs: pass them on the command line as `name=query` (`npm run screenshot -- 'gbp-dark=theme=dark&cfg={"unit":"£/kWh","rate_multiplier":1}'`) rather than adding them to `scripts/screenshot.mjs`.
 
 ### Creating a PR
 
@@ -34,15 +36,15 @@ For any change that can affect what the card looks like (`src/chart.ts`, `src/co
 
 Every such PR must include **before and after** screenshots, and both must show data that exercises the change. A PR without both is not ready to open.
 
-1. Pick the scenario(s) that show the change. The data has to make the difference visible: a fix for £ units needs a preview using `unit`/`rate_multiplier` for £, not the default pence data where nothing changes. If no existing scenario does, add one to the preview page or `scripts/screenshot.mjs` first (on the branch, so it is available for both runs).
-2. **Before:** with the new scenario available, check out `main` (or the PR's base), run `npm run build && npm run screenshot`, and copy the PNGs you need to `preview/out/before-<name>.png`.
-3. **After:** on the PR branch, run `npm run build && npm run screenshot`, then open the PNGs and check they look right (dark and light at minimum). Copy them to `preview/out/after-<name>.png`.
+1. Pick the scenario(s) that show the change. The data has to make the difference visible: a fix for £ units needs a preview using `unit`/`rate_multiplier` for £, not the default pence data where nothing changes. Build it as a command-line shot (`npm run screenshot -- name=query`, see above) and don't add it to `scripts/screenshot.mjs`. If the preview page can't express the state, add a generic param to `preview/index.html` on the branch instead.
+2. **Before:** check out `main` (or the PR's base), run `npm run build && npm run screenshot -- <your shots>`, and copy the PNGs you need to `preview/out/before-<name>.png`. If the scenario needs a new preview param, keep the branch's `preview/index.html` (it is static and loads `dist/`).
+3. **After:** on the PR branch, run the same command, then open the PNGs and check they look right (dark and light at minimum). Copy them to `preview/out/after-<name>.png`.
 4. Attach every pair with `gh` (needs a version that supports `--attach`; docs: https://docs.github.com/en/github-cli/github-cli/attaching-files-with-github-cli), with alt text saying which is which and what data it shows:
    - `gh pr create --attach 'preview/out/before-dark.png#Before, dark theme, £/kWh rates' --attach 'preview/out/after-dark.png#After, dark theme, £/kWh rates' ...`
    - or, on an existing PR, `gh pr comment <n> --attach ...` / `gh pr edit <n> --attach ...`.
 
    Alt text goes after `#`. The same file can't be attached twice, which is why before/after files are named separately. If `gh` rejects `--attach` (older version), fall back to telling the user which files in `preview/out/` to drag into the PR. Never commit `preview/out/` or add a branch just for images.
-5. In the PR description, say in one line what each pair demonstrates and which scenario/data it uses.
+5. In the PR description, say in one line what each pair demonstrates and give the exact `npm run screenshot -- ...` command so a reviewer can reproduce it.
 
 If the change is a new visual feature with no "before" (nothing equivalent existed), say so in the description and show the after screenshots only.
 
