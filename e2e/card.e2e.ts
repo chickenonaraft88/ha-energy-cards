@@ -35,6 +35,30 @@ test('renders in the light theme', async ({ page }) => {
   await expect(page.locator('energy-price-graph-card .label').first()).toHaveText('NOW · 17:00');
 });
 
+for (const [width, hours] of [
+  [360, 24],
+  [360, 48],
+  [560, 48],
+] as const) {
+  test(`x-axis labels do not overlap for ${hours}h at ${width}px`, async ({ page }) => {
+    await open(page, `theme=dark&width=${width}&cfg=${JSON.stringify({ hours })}`);
+    const boxes = await page.evaluate(() => {
+      const svg = document.querySelector('energy-price-graph-card')?.shadowRoot?.querySelector('svg');
+      return [...(svg?.querySelectorAll('text.axis') ?? [])]
+        .filter((t) => /^\d\d:\d\d$/.test(t.textContent ?? ''))
+        .map((t) => {
+          const r = t.getBoundingClientRect();
+          return { text: t.textContent, left: r.left, right: r.right };
+        })
+        .sort((a, b) => a.left - b.left);
+    });
+    expect(boxes.length).toBeGreaterThan(1);
+    for (let i = 1; i < boxes.length; i++) {
+      expect(boxes[i].left, `${boxes[i - 1].text} and ${boxes[i].text}`).toBeGreaterThanOrEqual(boxes[i - 1].right);
+    }
+  });
+}
+
 for (const width of [360, 560]) {
   test(`chart text is not clipped at ${width}px`, async ({ page }) => {
     await open(page, `theme=dark&width=${width}`);

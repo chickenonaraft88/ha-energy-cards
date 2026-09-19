@@ -30,6 +30,20 @@ export const yAxis = (values: number[]): YAxis => {
   return { yMin, yMax, step, ticks };
 };
 
+const HOUR = 3600000;
+const LABEL_STEPS_H = [2, 3, 4, 6, 12, 24];
+/** Room one 'HH:mm' label needs at 11px, with a gap either side. */
+const MIN_LABEL_SPACING = 48;
+
+/** Times for the x-axis labels: every 2h when they fit, otherwise the smallest step that keeps them apart. */
+export const xTicks = (start: number, end: number, plotW: number): number[] => {
+  const pxPerHour = plotW / ((end - start) / HOUR);
+  const stepH = LABEL_STEPS_H.find((h) => h * pxPerHour >= MIN_LABEL_SPACING) ?? 24;
+  const ticks: number[] = [];
+  for (let t = start; t < end; t += stepH * HOUR) ticks.push(t);
+  return ticks;
+};
+
 /** Short symbol for the axis, from the unit's currency part: 'p/kWh' -> 'p', '£/kWh' -> '£'. */
 export const unitSymbol = (unit: string): string => unit.split('/')[0].trim();
 
