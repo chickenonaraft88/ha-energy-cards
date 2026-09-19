@@ -1,4 +1,4 @@
-import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
+import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { renderChart } from './chart';
 import { palette, priceColor } from './colors';
 import {
@@ -74,7 +74,7 @@ class EnergyPriceGraphCard extends LitElement {
       current_rate_entity: 'Optional - derived from the rates if empty.',
       next_rate_entity: 'Optional - derived from the rates if empty.',
       current_day_rates_entity: 'Event entity with a "rates" attribute.',
-      next_day_rates_entity: 'Optional. Empty until tomorrow\'s rates are published.',
+      next_day_rates_entity: "Optional. Empty until tomorrow's rates are published.",
       incentive_events_entity: 'Optional. Shades active/upcoming sessions on the chart.',
       rate_multiplier: 'Applied to raw values. 100 converts £ to p.',
     };
@@ -149,10 +149,11 @@ class EnergyPriceGraphCard extends LitElement {
   protected shouldUpdate(changed: PropertyValues): boolean {
     if (changed.size === 1 && changed.has('hass')) {
       const old = changed.get('hass') as HomeAssistant | undefined;
-      if (!old || !this._config) return true;
+      const cfg = this._config;
+      if (!old || !cfg) return true;
       if (old.themes?.darkMode !== this.hass?.themes?.darkMode) return true;
       return ENTITY_KEYS.some((k) => {
-        const id = this._config![k];
+        const id = cfg[k];
         return id ? old.states[id] !== this.hass?.states[id] : false;
       });
     }
@@ -231,22 +232,24 @@ class EnergyPriceGraphCard extends LitElement {
         </div>
       </div>
       <div class="chart">
-        ${this._width
-          ? renderChart({
-              uid: this._uid,
-              rates,
-              width: this._width,
-              height: cfg.height ?? 190,
-              dark,
-              now,
-              start: start.getTime(),
-              end: start.getTime() + spanHours * HOUR,
-              sessions,
-              nowColor: nowLineColor,
-              incentiveColor: pal.purple,
-              incentiveLabel,
-            })
-          : nothing}
+        ${
+          this._width
+            ? renderChart({
+                uid: this._uid,
+                rates,
+                width: this._width,
+                height: cfg.height ?? 190,
+                dark,
+                now,
+                start: start.getTime(),
+                end: start.getTime() + spanHours * HOUR,
+                sessions,
+                nowColor: nowLineColor,
+                incentiveColor: pal.purple,
+                incentiveLabel,
+              })
+            : nothing
+        }
       </div>
     </ha-card>`;
   }

@@ -20,7 +20,7 @@ const mix = (a: string, b: string, t: number): string => {
     const y = (bh >> shift) & 255;
     return Math.round(x + (y - x) * t);
   };
-  return '#' + ((1 << 24) + (ch(16) << 16) + (ch(8) << 8) + ch(0)).toString(16).slice(1);
+  return `#${((1 << 24) + (ch(16) << 16) + (ch(8) << 8) + ch(0)).toString(16).slice(1)}`;
 };
 
 /** Colour for a single price (p/kWh): <0 cyan/blue, 0-5 green, 5-20 green->orange, 20-30 orange->red, 30+ red. */

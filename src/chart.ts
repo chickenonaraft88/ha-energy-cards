@@ -1,4 +1,4 @@
-import { svg, nothing, type TemplateResult } from 'lit';
+import { nothing, svg, type TemplateResult } from 'lit';
 import { gradientStops } from './colors';
 import { fmtTime } from './data';
 import type { Rate, Session } from './types';
@@ -22,7 +22,7 @@ const PAD = { left: 36, right: 16, top: 28, bottom: 22 };
 const HOUR = 3600000;
 
 const niceStep = (rough: number): number => {
-  const pow = Math.pow(10, Math.floor(Math.log10(rough)));
+  const pow = 10 ** Math.floor(Math.log10(rough));
   const f = rough / pow;
   return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * pow;
 };
