@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  clampHeight,
   clampHours,
   currentSlotStart,
   fmtTime,
@@ -247,5 +248,30 @@ describe('clampHours', () => {
 
   it('accepts numeric strings from YAML', () => {
     expect(clampHours('12')).toBe(12);
+  });
+});
+
+describe('clampHeight', () => {
+  it('passes through values in the editor range', () => {
+    expect(clampHeight(190)).toBe(190);
+    expect(clampHeight(100)).toBe(100);
+    expect(clampHeight(500)).toBe(500);
+  });
+
+  it('clamps out-of-range values instead of producing a negative plot area', () => {
+    expect(clampHeight(0)).toBe(100);
+    expect(clampHeight(-40)).toBe(100);
+    expect(clampHeight(30)).toBe(100);
+    expect(clampHeight(9000)).toBe(500);
+  });
+
+  it('accepts numeric strings from YAML', () => {
+    expect(clampHeight('250')).toBe(250);
+  });
+
+  it('falls back to the default for missing or non-numeric values', () => {
+    for (const v of [undefined, null, '', 'tall', Number.NaN, Number.POSITIVE_INFINITY, true]) {
+      expect(clampHeight(v)).toBe(190);
+    }
   });
 });

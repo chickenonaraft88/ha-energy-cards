@@ -79,3 +79,14 @@ export const clampHours = (hours: unknown): number => {
   if (hours == null || hours === '' || !Number.isFinite(n)) return DEFAULT_HOURS;
   return Math.min(MAX_HOURS, Math.max(MIN_HOURS, n));
 };
+
+export const MIN_HEIGHT = 100;
+export const MAX_HEIGHT = 500;
+export const DEFAULT_HEIGHT = 190;
+
+/** Chart height in px, limited to the editor's range so YAML can't produce a zero, negative or NaN plot area. */
+export const clampHeight = (height: unknown): number => {
+  const n = Number(height);
+  if (height == null || height === '' || typeof height === 'boolean' || !Number.isFinite(n)) return DEFAULT_HEIGHT;
+  return Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, n));
+};
