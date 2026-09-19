@@ -83,6 +83,66 @@ describe('rateAt', () => {
   });
 });
 
+describe('parseRates with null or blank attributes', () => {
+  it('skips a rate whose value is null or blank instead of plotting it as 0', () => {
+    const rates = parseRates(
+      ent({
+        rates: [
+          { start: iso(10), end: iso(10, 30), value_inc_vat: null },
+          { start: iso(10, 30), end: iso(11), value_inc_vat: '' },
+          { start: iso(11), end: iso(11, 30), value_inc_vat: undefined },
+          { start: iso(11, 30), end: iso(12), value_inc_vat: true },
+          { start: iso(12), end: iso(12, 30), value_inc_vat: 0 },
+        ],
+      }),
+      100,
+    );
+    expect(rates).toEqual([{ start: at(12), end: at(12, 30), value: 0 }]);
+  });
+
+  it('skips a rate whose start is null or blank instead of dating it 1970', () => {
+    const rates = parseRates(
+      ent({
+        rates: [
+          { start: null, value_inc_vat: 0.1 },
+          { start: '', value_inc_vat: 0.1 },
+        ],
+      }),
+      100,
+    );
+    expect(rates).toEqual([]);
+  });
+
+  it('defaults a null end to a 30 minute slot', () => {
+    const [r] = parseRates(ent({ rates: [{ start: iso(10), end: null, value_inc_vat: 0.1 }] }), 100);
+    expect(r.end - r.start).toBe(30 * 60 * 1000);
+  });
+});
+
+describe('parseSessions with null or blank attributes', () => {
+  it('uses duration_in_minutes when end is null instead of ending at 1970', () => {
+    const s = parseSessions(
+      ent({ joined_events: [{ start: iso(17), end: null, duration_in_minutes: 60 }] }),
+      'joined_events',
+    );
+    expect(s).toEqual([{ start: at(17), end: at(18) }]);
+  });
+
+  it('skips sessions with a null start, a null end and no duration, or a null duration', () => {
+    const s = parseSessions(
+      ent({
+        joined_events: [
+          { start: null, end: iso(18) },
+          { start: iso(17), end: null },
+          { start: iso(17), end: '', duration_in_minutes: null },
+        ],
+      }),
+      'joined_events',
+    );
+    expect(s).toEqual([]);
+  });
+});
+
 describe('parseSessions', () => {
   it('parses start/end from the named attribute', () => {
     const s = parseSessions(ent({ joined_events: [{ start: iso(17, 30), end: iso(18, 30) }] }), 'joined_events');

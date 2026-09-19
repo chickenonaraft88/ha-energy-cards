@@ -2,15 +2,22 @@ import type { HassEntity, Rate, Session } from './types';
 
 const SLOT_MS = 30 * 60 * 1000;
 
+// Attribute values are untyped. Number(null) and new Date(null) are valid (0 and 1970), and Number('') is 0,
+// so absent and blank values have to be rejected before converting.
+const absent = (x: unknown): boolean =>
+  x == null || (typeof x === 'string' && x.trim() === '') || typeof x === 'boolean';
+const toNumber = (x: unknown): number => (absent(x) ? Number.NaN : Number(x));
+const toTime = (x: unknown): number => (absent(x) ? Number.NaN : new Date(x as string | number).getTime());
+
 export const parseRates = (entity: HassEntity | undefined, multiplier: number): Rate[] => {
   const raw = entity?.attributes?.rates;
   if (!Array.isArray(raw)) return [];
   const out: Rate[] = [];
   for (const r of raw) {
-    const start = new Date(r?.start).getTime();
-    const value = Number(r?.value_inc_vat) * multiplier;
+    const start = toTime(r?.start);
+    const value = toNumber(r?.value_inc_vat) * multiplier;
     if (!Number.isFinite(start) || !Number.isFinite(value)) continue;
-    const end = new Date(r?.end).getTime();
+    const end = toTime(r?.end);
     out.push({ start, end: Number.isFinite(end) ? end : start + SLOT_MS, value });
   }
   return out;
@@ -30,10 +37,10 @@ export const parseSessions = (entity: HassEntity | undefined, attribute: string)
   if (!Array.isArray(raw)) return [];
   const out: Session[] = [];
   for (const e of raw) {
-    const start = new Date(e?.start).getTime();
-    let end = new Date(e?.end).getTime();
+    const start = toTime(e?.start);
+    let end = toTime(e?.end);
     if (!Number.isFinite(end) && Number.isFinite(start)) {
-      const mins = Number(e?.duration_in_minutes);
+      const mins = toNumber(e?.duration_in_minutes);
       if (Number.isFinite(mins)) end = start + mins * 60000;
     }
     if (Number.isFinite(start) && Number.isFinite(end)) out.push({ start, end });
