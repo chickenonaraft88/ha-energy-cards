@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
 
 // The preview page pins "now" to 17:10 (override with ?time=) and mocks Octopus data.
@@ -8,6 +9,14 @@ const open = async (page: Page, query: string) => {
   await expect(page.locator('energy-price-graph-card svg path').first()).toBeVisible();
   return errors;
 };
+
+test('logs the package version, not a hard-coded one', async ({ page }) => {
+  const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
+  const logs: string[] = [];
+  page.on('console', (m) => logs.push(m.text()));
+  await open(page, 'theme=dark');
+  expect(logs.find((l) => l.includes('ENERGY-PRICE-GRAPH-CARD'))).toContain(` v${version} `);
+});
 
 test('shows now and next prices with an upcoming power down session', async ({ page }) => {
   const errors = await open(page, 'theme=dark');
