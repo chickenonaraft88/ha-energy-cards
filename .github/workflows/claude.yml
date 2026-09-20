@@ -6,7 +6,7 @@ on:
   pull_request_review_comment:
     types: [created]
   issues:
-    types: [opened, assigned]
+    types: [opened, assigned, labeled]
   pull_request_review:
     types: [submitted]
 
@@ -16,7 +16,7 @@ jobs:
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude') || github.event.action == 'assigned'))
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude') || github.event.action == 'assigned' || github.event.action == 'labeled'))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,6 +51,14 @@ jobs:
           # still only fires when the assignee is really "claude" (a no-op
           # job otherwise).
           assignee_trigger: 'claude'
+
+          # The "claude" bot doesn't show up in the Assignees picker (only
+          # real collaborators do), so applying the "claude" label is the
+          # UI-visible alternative: anyone can pick it from the Labels
+          # menu. The `if:` above widens to any 'labeled' action; this
+          # input still only fires when the applied label is really
+          # "claude" (a no-op job otherwise).
+          label_trigger: 'claude'
 
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
