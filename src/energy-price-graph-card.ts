@@ -197,6 +197,8 @@ class EnergyPriceGraphCard extends LitElement {
           )
         : undefined;
 
+    // The legend explains what is drawn: plan swatches only with plan windows in range, the dashed line only with a forecast.
+    const planShown = !!battery && hasWindowIn(battery, start.getTime(), start.getTime() + spanHours * HOUR);
     const lastReal = rates[rates.length - 1]?.end;
     const forecast =
       predbat && cfg.predbat_rates !== false && lastReal !== undefined
@@ -245,12 +247,16 @@ class EnergyPriceGraphCard extends LitElement {
         }
       </div>
       ${
-        battery && hasWindowIn(battery, start.getTime(), start.getTime() + spanHours * HOUR)
+        planShown || forecast.length
           ? html`<div class="legend">
-              <span><i style="background:${pal.blue}"></i>Charge</span>
-              <span><i style="background:${pal.cyan}"></i>Discharge</span>
+              ${
+                planShown
+                  ? html`<span><i style="background:${pal.blue}"></i>Charge</span>
+                      <span><i style="background:${pal.cyan}"></i>Discharge</span>`
+                  : nothing
+              }
               ${forecast.length ? html`<span><i class="dashed"></i>Predbat prices</span>` : nothing}
-              <span>Predbat plan</span>
+              ${planShown ? html`<span>Predbat plan</span>` : nothing}
             </div>`
           : nothing
       }
