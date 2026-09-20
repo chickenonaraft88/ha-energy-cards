@@ -8,7 +8,7 @@ permissions:
   pull-requests: read
 
 jobs:
-  check:
+  title:
     # Dependabot's titles are generated; see dependabot.yml for their prefix.
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
