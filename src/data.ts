@@ -101,6 +101,28 @@ export const clampWindowHours = (hours: unknown): number | undefined => {
   return Math.min(MAX_WINDOW_HOURS, Math.max(MIN_WINDOW_HOURS, n));
 };
 
+export interface RateSummary {
+  average: number;
+  min: number;
+  max: number;
+}
+
+/** Average, min and max rate overlapping [start, end). Undefined when no rate falls in range. */
+export const rateSummary = (rates: Rate[], start: number, end: number): RateSummary | undefined => {
+  let sum = 0;
+  let count = 0;
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (const r of rates) {
+    if (r.end <= start || r.start >= end) continue;
+    sum += r.value;
+    count++;
+    if (r.value < min) min = r.value;
+    if (r.value > max) max = r.value;
+  }
+  return count === 0 ? undefined : { average: sum / count, min, max };
+};
+
 export interface CheapestWindow {
   start: number;
   end: number;

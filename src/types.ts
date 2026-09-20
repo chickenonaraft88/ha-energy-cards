@@ -37,6 +37,8 @@ export interface EnergyPriceGraphCardConfig {
   height?: number;
   /** Shades the cheapest contiguous run of this many hours in the visible rates. Unset disables it. */
   cheapest_window_hours?: number;
+  /** Shows today's average/min/max rate and the current rate relative to the average (default off). */
+  show_rate_summary?: boolean;
 }
 
 export interface Rate {

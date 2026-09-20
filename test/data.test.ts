@@ -12,6 +12,7 @@ import {
   parseSessions,
   parseStateNumber,
   rateAt,
+  rateSummary,
   sessionActive,
   slotOverlapsSession,
 } from '../src/data';
@@ -304,6 +305,30 @@ describe('cheapestWindow', () => {
   it('rounds a fractional hour count to the nearest half-hour slot', () => {
     const rates = [slot(0, 0, 10), slot(0, 30, 1), slot(1, 0, 10)];
     expect(cheapestWindow(rates, 0.5)).toEqual({ start: at(0, 30), end: at(1, 0), average: 1 });
+  });
+});
+
+describe('rateSummary', () => {
+  const slot = (h: number, m: number, value: number) => ({ start: at(h, m), end: at(h, m) + 30 * 60 * 1000, value });
+
+  it('averages, and finds the min and max, of rates overlapping the range', () => {
+    const rates = [slot(0, 0, 10), slot(0, 30, 20), slot(1, 0, 30)];
+    expect(rateSummary(rates, at(0, 0), at(1, 30))).toEqual({ average: 20, min: 10, max: 30 });
+  });
+
+  it('excludes rates that only touch the range boundary', () => {
+    const rates = [slot(0, 0, 10), slot(0, 30, 20)];
+    expect(rateSummary(rates, at(0, 30), at(1, 0))).toEqual({ average: 20, min: 20, max: 20 });
+  });
+
+  it('excludes rates entirely outside the range', () => {
+    const rates = [slot(0, 0, 10), slot(12, 0, 999)];
+    expect(rateSummary(rates, at(0, 0), at(1, 0))).toEqual({ average: 10, min: 10, max: 10 });
+  });
+
+  it('returns undefined when no rate overlaps the range', () => {
+    expect(rateSummary([], at(0, 0), at(1, 0))).toBeUndefined();
+    expect(rateSummary([slot(12, 0, 10)], at(0, 0), at(1, 0))).toBeUndefined();
   });
 });
 

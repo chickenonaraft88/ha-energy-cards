@@ -445,6 +445,27 @@ test('shades the cheapest window with a badge, like NOW and POWER DOWN', async (
   expect(errors).toEqual([]);
 });
 
+test('shows no rate summary unless configured', async ({ page }) => {
+  await open(page, 'theme=dark');
+  await expect(page.locator('energy-price-graph-card .legend')).toHaveCount(0);
+});
+
+test('shows average, min, max and current-vs-average rate when enabled', async ({ page }) => {
+  const errors = await open(page, 'theme=dark&cfg={"show_rate_summary":true}');
+  const legend = page.locator('energy-price-graph-card .legend');
+  await expect(legend).toContainText(/Avg\s+-?\d+\.\d\dp\/kWh/);
+  await expect(legend).toContainText(/Min\s+-?\d+\.\d\dp\/kWh/);
+  await expect(legend).toContainText(/Max\s+-?\d+\.\d\dp\/kWh/);
+  await expect(legend).toContainText(/[+-]\d+\.\d\dp\/kWh\s+vs\s+avg/);
+  expect(errors).toEqual([]);
+});
+
+test('rate summary does not cause horizontal overflow at 360px', async ({ page }) => {
+  await open(page, 'theme=dark&width=360&cfg={"show_rate_summary":true}');
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
 test.describe('touch', () => {
   test.use({ hasTouch: true });
 

@@ -14,6 +14,7 @@ import {
   parseSessions,
   parseStateNumber,
   rateAt,
+  rateSummary,
   sessionActive,
   slotOverlapsSession,
 } from './data';
@@ -265,6 +266,10 @@ class EnergyPriceGraphCard extends LitElement {
 
     const fmt = (v: number | undefined) => (v === undefined ? '—' : v.toFixed(2));
 
+    const dayStart = new Date(now).setHours(0, 0, 0, 0);
+    const summary = cfg.show_rate_summary ? rateSummary(rates, dayStart, dayStart + 24 * HOUR) : undefined;
+    const vsAverage = summary && curPrice !== undefined ? curPrice - summary.average : undefined;
+
     const end = start.getTime() + spanHours * HOUR;
     const windowHours = clampWindowHours(cfg.cheapest_window_hours);
     const cheapest = windowHours
@@ -347,8 +352,18 @@ class EnergyPriceGraphCard extends LitElement {
         }
       </div>
       ${
-        planShown || forecast.length
+        planShown || forecast.length || summary
           ? html`<div class="legend">
+              ${
+                summary
+                  ? html`<span
+                      >Avg ${fmt(summary.average)}${unit} · Min ${fmt(summary.min)}${unit} · Max
+                      ${fmt(summary.max)}${unit}${
+                        vsAverage === undefined ? '' : ` · ${vsAverage >= 0 ? '+' : ''}${fmt(vsAverage)}${unit} vs avg`
+                      }</span
+                    >`
+                  : nothing
+              }
               ${
                 planShown
                   ? html`<span><i style="background:${pal.blue}"></i>Charge</span>
