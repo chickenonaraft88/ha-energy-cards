@@ -41,6 +41,8 @@ incentive_events_entity: event.octopus_energy_<account>_octoplus_power_down_even
 | `free_label` | `FREE` | Header suffix when the price is 0p or below. |
 | `unit` | `p/kWh` | Unit shown next to prices. |
 | `rate_multiplier` | `100` | Applied to raw values (£ to p). Use `1` if already in pence. |
+| `cheap_below` | – | Rates below this (in the card's unit, e.g. `10` for p/kWh or `0.10` for £/kWh) are green. |
+| `expensive_above` | – | Rates at or above this are red; rates in between are amber. Setting either option replaces the smooth gradient with these bands. |
 | `hours` | `24` | Chart span, from the top of the current hour. |
 | `height` | `190` | Chart height in px. |
 

@@ -1,6 +1,6 @@
 import { nothing, svg, type TemplateResult } from 'lit';
 import { fmtTick, xTicks, yAxis } from './axis';
-import { gradientStops } from './colors';
+import { gradientStops, type PriceBands } from './colors';
 import { fmtTime } from './data';
 import { PAD, xAtTime } from './hover';
 import { badgeWidth, clearOf, clearOfAll, fitLabel, type Span } from './layout';
@@ -29,6 +29,8 @@ export interface ChartInput {
   unit: string;
   /** Price unit size relative to pence, see `priceScale`. */
   priceScale: number;
+  /** Cheap/expensive bands; when set the bars use them instead of the smooth gradient. */
+  bands?: PriceBands;
   /** The rate slot under the pointer, highlighted on the chart. */
   hover?: { start: number; end: number; value: number };
 }
@@ -94,7 +96,7 @@ export const renderChart = (c: ChartInput): TemplateResult => {
 
   const gid = `g-${c.uid}`;
   const cid = `c-${c.uid}`;
-  const stops = gradientStops(c.dark, c.priceScale).map(([v, col]) => {
+  const stops = gradientStops(c.dark, c.priceScale, c.bands).map(([v, col]) => {
     const off = Math.min(Math.max((yMax - v) / (yMax - yMin), 0), 1);
     return svg`<stop offset=${off} stop-color=${col}></stop>`;
   });

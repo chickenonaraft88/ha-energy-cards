@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gradientStops, palette, priceColor, priceScale } from '../src/colors';
+import { gradientStops, palette, priceColor, priceScale, resolveBands } from '../src/colors';
 
 describe('priceColor', () => {
   const p = palette(true);
@@ -76,5 +76,54 @@ describe('gradientStops', () => {
   it('is ordered from highest to lowest value', () => {
     const vals = gradientStops(true).map(([v]) => v);
     expect(vals).toEqual([...vals].sort((a, b) => b - a));
+  });
+});
+
+describe('price bands', () => {
+  const p = palette(true);
+  const bands = { cheapBelow: 10, expensiveAbove: 30 };
+
+  it('colours green below cheap, amber between and red from expensive', () => {
+    expect(priceColor(9.99, true, 1, bands)).toBe(p.green);
+    expect(priceColor(10, true, 1, bands)).toBe(p.orange);
+    expect(priceColor(29.99, true, 1, bands)).toBe(p.orange);
+    expect(priceColor(30, true, 1, bands)).toBe(p.red);
+  });
+
+  it('treats negative prices as cheap', () => {
+    expect(priceColor(-5, true, 1, bands)).toBe(p.green);
+  });
+
+  it('compares in the card unit, so £ thresholds work without scaling', () => {
+    const gbp = { cheapBelow: 0.1, expensiveAbove: 0.3 };
+    expect(priceColor(0.05, true, 0.01, gbp)).toBe(p.green);
+    expect(priceColor(0.2, true, 0.01, gbp)).toBe(p.orange);
+    expect(priceColor(0.35, true, 0.01, gbp)).toBe(p.red);
+  });
+
+  it('uses the light palette in light mode', () => {
+    expect(priceColor(50, false, 1, bands)).toBe(palette(false).red);
+  });
+
+  it('with only one edge, leaves the other band out', () => {
+    expect(priceColor(50, true, 1, { cheapBelow: 10 })).toBe(p.orange);
+    expect(priceColor(5, true, 1, { expensiveAbove: 30 })).toBe(p.orange);
+  });
+
+  it('builds hard-stepped gradient stops, highest first', () => {
+    expect(gradientStops(true, 1, bands)).toEqual([
+      [30, p.red],
+      [30, p.orange],
+      [10, p.orange],
+      [10, p.green],
+    ]);
+  });
+
+  it('resolves bands from config, ignoring unset, non-numeric or inverted values', () => {
+    expect(resolveBands()).toBeUndefined();
+    expect(resolveBands('10', null)).toBeUndefined();
+    expect(resolveBands(30, 10)).toBeUndefined();
+    expect(resolveBands(10, 30)).toEqual({ cheapBelow: 10, expensiveAbove: 30 });
+    expect(resolveBands(undefined, 30)).toEqual({ cheapBelow: undefined, expensiveAbove: 30 });
   });
 });
