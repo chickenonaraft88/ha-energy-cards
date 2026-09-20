@@ -104,6 +104,26 @@ for (const width of [360, 560]) {
   });
 }
 
+test('follows a resize after the card is detached and re-attached', async ({ page }) => {
+  await open(page, 'theme=dark&width=560');
+  const svgWidth = () =>
+    page.evaluate(() => document.querySelector('energy-price-graph-card')?.shadowRoot?.querySelector('svg')?.clientWidth);
+  expect(await svgWidth()).toBe(560);
+  // HA moves cards around (edit mode, view changes); nothing re-renders the card while it is out of the DOM.
+  await page.evaluate(() => {
+    const host = document.getElementById('card') as HTMLElement;
+    const card = host.firstElementChild as Element;
+    card.remove();
+    host.style.width = '360px';
+    host.appendChild(card);
+  });
+  await expect.poll(svgWidth).toBe(360);
+  await page.evaluate(() => {
+    (document.getElementById('card') as HTMLElement).style.width = '480px';
+  });
+  await expect.poll(svgWidth).toBe(480);
+});
+
 for (const width of [360, 560]) {
   test(`chart text is not clipped at ${width}px`, async ({ page }) => {
     await open(page, `theme=dark&width=${width}`);
