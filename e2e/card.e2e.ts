@@ -157,6 +157,30 @@ for (const width of [360, 560]) {
   });
 }
 
+// scenario=negative dips well past the -7p blue saturation point, so ticks like "-18p" are wider than
+// typical positive labels and are the most likely to clip against the svg edge.
+for (const width of [360, 560]) {
+  test(`negative axis labels are not clipped at ${width}px`, async ({ page }) => {
+    await open(page, `theme=dark&width=${width}&scenario=negative`);
+    const { clipped, negativeTicks } = await page.evaluate(() => {
+      const svg = document.querySelector('energy-price-graph-card')?.shadowRoot?.querySelector('svg');
+      if (!svg) return { clipped: ['no svg'], negativeTicks: 0 };
+      const box = svg.getBoundingClientRect();
+      const texts = [...svg.querySelectorAll('text')];
+      const clipped = texts
+        .filter((t) => {
+          const r = t.getBoundingClientRect();
+          return r.left < box.left - 0.5 || r.right > box.right + 0.5 || r.top < box.top - 0.5 || r.bottom > box.bottom + 0.5;
+        })
+        .map((t) => t.textContent ?? '');
+      const negativeTicks = texts.filter((t) => t.classList.contains('axis') && /^-\d/.test(t.textContent ?? '')).length;
+      return { clipped, negativeTicks };
+    });
+    expect(negativeTicks).toBeGreaterThan(0);
+    expect(clipped).toEqual([]);
+  });
+}
+
 test('shows no battery track unless Predbat is configured', async ({ page }) => {
   await open(page, 'theme=dark');
   await expect(page.locator('energy-price-graph-card svg g.battery')).toHaveCount(0);
