@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cheapestWindow,
   clampHeight,
   clampHours,
+  clampWindowHours,
   currentSlotStart,
   fmtTime,
   mergeRates,
@@ -248,6 +250,60 @@ describe('clampHours', () => {
 
   it('accepts numeric strings from YAML', () => {
     expect(clampHours('12')).toBe(12);
+  });
+});
+
+describe('clampWindowHours', () => {
+  it('passes through values in range', () => {
+    expect(clampWindowHours(1)).toBe(1);
+    expect(clampWindowHours(3)).toBe(3);
+    expect(clampWindowHours(12)).toBe(12);
+  });
+
+  it('clamps oversized values and small positive ones into 1-12', () => {
+    expect(clampWindowHours(100)).toBe(12);
+    expect(clampWindowHours(0.5)).toBe(1);
+  });
+
+  it('treats zero, negative, missing or non-numeric values as off', () => {
+    for (const v of [0, -5, undefined, null, '', 'abc', Number.NaN, true, false]) {
+      expect(clampWindowHours(v)).toBeUndefined();
+    }
+  });
+
+  it('accepts numeric strings from YAML', () => {
+    expect(clampWindowHours('3')).toBe(3);
+  });
+});
+
+describe('cheapestWindow', () => {
+  const slot = (h: number, m: number, value: number) => ({ start: at(h, m), end: at(h, m) + 30 * 60 * 1000, value });
+
+  it('finds the cheapest contiguous run of half-hour slots', () => {
+    const rates = [slot(0, 0, 10), slot(0, 30, 20), slot(1, 0, 5), slot(1, 30, 5), slot(2, 0, 30), slot(2, 30, 30)];
+    expect(cheapestWindow(rates, 1)).toEqual({ start: at(1, 0), end: at(2, 0), average: 5 });
+  });
+
+  it('keeps the earliest window on a tie', () => {
+    const rates = [slot(0, 0, 5), slot(0, 30, 5), slot(1, 0, 5), slot(1, 30, 5)];
+    expect(cheapestWindow(rates, 1)).toEqual({ start: at(0, 0), end: at(1, 0), average: 5 });
+  });
+
+  it('refuses to span a gap in the data', () => {
+    // Combining the cheap slot at each end of the gap (1 + 1) would beat either real window (101), but the two
+    // halves aren't adjacent (the second run starts at 2:00, not 1:00), so it must not be considered.
+    const rates = [slot(0, 0, 1), slot(0, 30, 100), slot(2, 0, 1), slot(2, 30, 100)];
+    expect(cheapestWindow(rates, 1)).toEqual({ start: at(0, 0), end: at(1, 0), average: 50.5 });
+  });
+
+  it('returns undefined when there is no contiguous run long enough', () => {
+    expect(cheapestWindow([slot(0, 0, 10)], 1)).toBeUndefined();
+    expect(cheapestWindow([], 1)).toBeUndefined();
+  });
+
+  it('rounds a fractional hour count to the nearest half-hour slot', () => {
+    const rates = [slot(0, 0, 10), slot(0, 30, 1), slot(1, 0, 10)];
+    expect(cheapestWindow(rates, 0.5)).toEqual({ start: at(0, 30), end: at(1, 0), average: 1 });
   });
 });
 

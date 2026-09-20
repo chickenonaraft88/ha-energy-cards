@@ -45,6 +45,7 @@ incentive_events_entity: event.octopus_energy_<account>_octoplus_power_down_even
 | `expensive_above` | – | Rates at or above this are red; rates in between are amber. Setting either option replaces the smooth gradient with these bands. |
 | `hours` | `24` | Chart span, from the top of the current hour. |
 | `height` | `190` | Chart height in px. |
+| `cheapest_window_hours` | _(off)_ | Shades the cheapest contiguous run of this many hours (1-12) in the visible rates. |
 
 Hover over the chart (or tap it on a touch screen) to see a slot's time span and price, whether it falls in an incentive session or is a Predbat prediction, and, with `predbat_prefix` set, what Predbat's plan is doing then. Tap elsewhere to dismiss.
 

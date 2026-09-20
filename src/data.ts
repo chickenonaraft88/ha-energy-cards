@@ -90,3 +90,51 @@ export const clampHeight = (height: unknown): number => {
   if (height == null || height === '' || typeof height === 'boolean' || !Number.isFinite(n)) return DEFAULT_HEIGHT;
   return Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, n));
 };
+
+export const MIN_WINDOW_HOURS = 1;
+export const MAX_WINDOW_HOURS = 12;
+
+/** Cheapest-window length in hours, from config; undefined when unset, blank or non-numeric (feature off). */
+export const clampWindowHours = (hours: unknown): number | undefined => {
+  const n = Number(hours);
+  if (hours == null || hours === '' || typeof hours === 'boolean' || !Number.isFinite(n) || n <= 0) return undefined;
+  return Math.min(MAX_WINDOW_HOURS, Math.max(MIN_WINDOW_HOURS, n));
+};
+
+export interface CheapestWindow {
+  start: number;
+  end: number;
+  average: number;
+}
+
+/**
+ * The cheapest contiguous run of `hours` worth of half-hour slots in `rates` (assumed sorted by start). A run can't
+ * span a gap between slots. Ties keep the earliest window. Undefined when there isn't a contiguous run that long.
+ */
+export const cheapestWindow = (rates: Rate[], hours: number): CheapestWindow | undefined => {
+  const slots = Math.round(hours * 2);
+  if (slots <= 0 || rates.length < slots) return undefined;
+
+  let best: CheapestWindow | undefined;
+  let bestSum = Number.POSITIVE_INFINITY;
+  let sum = 0;
+  let runLen = 0;
+
+  for (let i = 0; i < rates.length; i++) {
+    if (i > 0 && rates[i].start !== rates[i - 1].end) {
+      sum = 0;
+      runLen = 0;
+    }
+    sum += rates[i].value;
+    runLen++;
+    if (runLen > slots) {
+      sum -= rates[i - slots].value;
+      runLen = slots;
+    }
+    if (runLen === slots && sum < bestSum) {
+      bestSum = sum;
+      best = { start: rates[i - slots + 1].start, end: rates[i].end, average: sum / slots };
+    }
+  }
+  return best;
+};

@@ -33,6 +33,10 @@ export interface ChartInput {
   bands?: PriceBands;
   /** The rate slot under the pointer, highlighted on the chart. */
   hover?: { start: number; end: number; value: number };
+  /** The cheapest N-hour window to shade; undefined when the feature is off or no window was found. */
+  cheapestWindow?: { start: number; end: number };
+  cheapestLabel: string;
+  cheapestColor: string;
 }
 
 /** Extra height for the battery track under the plot: an 8px gap plus the 14px bar. */
@@ -132,6 +136,23 @@ export const renderChart = (c: ChartInput): TemplateResult => {
         ${badge(bx, BADGE_Y, c.incentiveLabel, c.incentiveColor)}`;
     });
 
+  const cw = c.cheapestWindow;
+  const cheapestBand =
+    cw && cw.end > c.start && cw.start < c.end
+      ? (() => {
+          const cx1 = x(Math.max(cw.start, c.start));
+          const cx2 = x(Math.min(cw.end, c.end));
+          const labelW = badgeWidth(c.cheapestLabel);
+          const bx = clearOfAll(cx1 + 4, labelW, placed, 0, W - PAD.right - labelW);
+          placed.push({ x: bx, w: labelW });
+          return svg`<rect x=${cx1} y=${PAD.top} width=${Math.max(cx2 - cx1, 1)} height=${plotH}
+              fill=${c.cheapestColor} opacity=${c.dark ? 0.16 : 0.1}></rect>
+            <line x1=${cx1} x2=${cx1} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${c.cheapestColor} stroke-dasharray="2 2"></line>
+            <line x1=${cx2} x2=${cx2} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${c.cheapestColor} stroke-dasharray="2 2"></line>
+            ${badge(bx, BADGE_Y, c.cheapestLabel, c.cheapestColor)}`;
+        })()
+      : nothing;
+
   const forecastW = badgeWidth(FORECAST_LABEL);
   const forecastX = clearOfAll(
     divider === undefined ? 0 : x(divider) + 4,
@@ -191,6 +212,7 @@ export const renderChart = (c: ChartInput): TemplateResult => {
       <clipPath id=${cid}><rect x=${PAD.left} y=${PAD.top - 8} width=${plotW} height=${plotH + 16}></rect></clipPath>
     </defs>
     ${grid}
+    ${cheapestBand}
     ${sessions}
     ${hoverBand}
     <g clip-path="url(#${cid})">
