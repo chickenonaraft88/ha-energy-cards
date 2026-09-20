@@ -265,3 +265,23 @@ for (const width of [360, 560]) {
     }
   });
 }
+
+test('joins the predicted line to the end of the real one', async ({ page }) => {
+  await open(page, 'theme=dark&predbat=1&until=23');
+  const ends = await page.evaluate(() => {
+    const s = document.querySelector('energy-price-graph-card')?.shadowRoot?.querySelector('svg');
+    const point = (d: string | null | undefined, which: 'first' | 'last') => {
+      const pts = [...(d ?? '').matchAll(/[ML]([\d.-]+),([\d.-]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+      return pts[which === 'first' ? 0 : pts.length - 1];
+    };
+    return {
+      realEnd: point(s?.querySelector('path.price-line')?.getAttribute('d'), 'last'),
+      joinStart: point(s?.querySelector('path.forecast-join')?.getAttribute('d'), 'first'),
+      joinEnd: point(s?.querySelector('path.forecast-join')?.getAttribute('d'), 'last'),
+      forecastStart: point(s?.querySelector('path.forecast[fill="none"]')?.getAttribute('d'), 'first'),
+    };
+  });
+  expect(ends.realEnd).toBeDefined();
+  expect(ends.joinStart).toEqual(ends.realEnd);
+  expect(ends.joinEnd).toEqual(ends.forecastStart);
+});
