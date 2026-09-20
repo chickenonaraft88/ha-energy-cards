@@ -72,6 +72,10 @@ export const parseBatteryWindows = (
 ): BatteryWindow[] =>
   [...parseChargeWindows(charge, horizon), ...parseExportWindows(exp, horizon)].sort((a, b) => a.start - b.start);
 
+/** Whether any window overlaps [start, end), i.e. there is something to show in the chart. */
+export const hasWindowIn = (windows: BatteryWindow[], start: number, end: number): boolean =>
+  windows.some((w) => w.end > start && w.start < end);
+
 /**
  * Label candidates for a window, longest first. Charge is nearly always 100%, so its target is only shown when it
  * is something else.

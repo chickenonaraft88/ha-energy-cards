@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  hasWindowIn,
   parseBatteryWindows,
   parseChargeWindows,
   parseExportWindows,
@@ -173,5 +174,20 @@ describe('windowTitle', () => {
       /^Charge to 100%, \d\d:\d\d–\d\d:\d\d$/,
     );
     expect(windowTitle({ start: t(20, 2), end: t(20, 4), kind: 'discharge', target: 15 })).toMatch(/^Discharge to 15%/);
+  });
+});
+
+describe('hasWindowIn', () => {
+  const w = { start: t(20, 2), end: t(20, 4), kind: 'charge' as const, target: 100 };
+
+  it('is true when a window overlaps the range, including partly', () => {
+    expect(hasWindowIn([w], t(20, 0), t(20, 3))).toBe(true);
+    expect(hasWindowIn([w], t(20, 3), t(20, 12))).toBe(true);
+  });
+
+  it('is false with no windows or none in range, including one that only touches the edge', () => {
+    expect(hasWindowIn([], t(20, 0), t(21, 0))).toBe(false);
+    expect(hasWindowIn([w], t(20, 4), t(20, 12))).toBe(false);
+    expect(hasWindowIn([w], t(19, 0), t(20, 2))).toBe(false);
   });
 });
