@@ -285,3 +285,68 @@ test('joins the predicted line to the end of the real one', async ({ page }) => 
   expect(ends.joinStart).toEqual(ends.realEnd);
   expect(ends.joinEnd).toEqual(ends.forecastStart);
 });
+
+// Pointer position for a time of day, given the preview's 24h span from 17:00 (x maths mirrors src/hover.ts).
+const pointAt = async (page: Page, hoursFromStart: number) => {
+  const box = await page.locator('energy-price-graph-card .chart').boundingBox();
+  if (!box) throw new Error('no chart');
+  const plotW = box.width - 36 - 16;
+  return { x: box.x + 36 + (hoursFromStart / 24) * plotW, y: box.y + box.height / 2 };
+};
+
+test('hovering the chart shows the slot time, price and incentive', async ({ page }) => {
+  await open(page, 'theme=dark');
+  const tip = page.locator('energy-price-graph-card .tooltip');
+  await expect(tip).toHaveCount(0);
+  const p = await pointAt(page, 0.75);
+  await page.mouse.move(p.x, p.y);
+  await expect(tip).toContainText('17:30–18:00');
+  await expect(tip).toContainText('p/kWh');
+  await expect(tip).toContainText('POWER DOWN');
+  await expect(tip).not.toContainText('Predbat');
+  await expect(page.locator('energy-price-graph-card .hover-band')).toHaveCount(1);
+  await page.mouse.move(0, 0);
+  await expect(tip).toHaveCount(0);
+});
+
+test('the tooltip shows the Predbat plan and marks predicted prices', async ({ page }) => {
+  await open(page, 'theme=dark&predbat=1&until=23');
+  const tip = page.locator('energy-price-graph-card .tooltip');
+  const p = await pointAt(page, 0.75);
+  await page.mouse.move(p.x, p.y);
+  await expect(tip).toContainText('Predbat: ');
+  // `until=23` ends the real rates at 23:00 (6h in), so the rest of the chart is Predbat's forecast.
+  const late = await pointAt(page, 12);
+  await page.mouse.move(late.x, late.y);
+  await expect(tip).toContainText('Predicted by Predbat');
+});
+
+test('the tooltip stays inside the card at either edge', async ({ page }) => {
+  await open(page, 'theme=dark&predbat=1&width=360');
+  const card = await page.locator('energy-price-graph-card ha-card').boundingBox();
+  for (const h of [0.1, 23.9]) {
+    const p = await pointAt(page, h);
+    await page.mouse.move(p.x, p.y);
+    const tip = await page.locator('energy-price-graph-card .tooltip').boundingBox();
+    expect(tip && card && tip.x >= card.x && tip.x + tip.width <= card.x + card.width, `${h}h`).toBe(true);
+  }
+});
+
+test.describe('touch', () => {
+  test.use({ hasTouch: true });
+
+  test('tapping the chart shows the tooltip and tapping elsewhere hides it', async ({ page }) => {
+    await open(page, 'theme=dark&width=360');
+    const tip = page.locator('energy-price-graph-card .tooltip');
+    const p = await pointAt(page, 0.75);
+    await page.touchscreen.tap(p.x, p.y);
+    await expect(tip).toContainText('17:30–18:00');
+    // Lifting the finger doesn't dismiss it.
+    await page.waitForTimeout(200);
+    await expect(tip).toHaveCount(1);
+    const header = await page.locator('energy-price-graph-card .header').boundingBox();
+    if (!header) throw new Error('no header');
+    await page.touchscreen.tap(header.x + 20, header.y + 10);
+    await expect(tip).toHaveCount(0);
+  });
+});

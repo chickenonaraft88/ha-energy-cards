@@ -105,6 +105,9 @@ export const windowLabels = (w: BatteryWindow): string[] =>
       : ['▲ Charge', '▲']
     : [`▼ Discharge · ${w.target}%`, `▼ ${w.target}%`, '▼'];
 
+/** What a window does, e.g. `Charge to 100%`. */
+export const windowSummary = (w: BatteryWindow): string =>
+  `${w.kind === 'charge' ? 'Charge to' : 'Discharge to'} ${w.target}%`;
+
 /** Tooltip text, the only place a narrow window's target is readable. */
-export const windowTitle = (w: BatteryWindow): string =>
-  `${w.kind === 'charge' ? 'Charge to' : 'Discharge to'} ${w.target}%, ${fmtTime(w.start)}–${fmtTime(w.end)}`;
+export const windowTitle = (w: BatteryWindow): string => `${windowSummary(w)}, ${fmtTime(w.start)}–${fmtTime(w.end)}`;
