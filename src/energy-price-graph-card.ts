@@ -347,7 +347,7 @@ class EnergyPriceGraphCard extends LitElement {
         }
       </div>
       ${
-        planShown || forecast.length || cheapest
+        planShown || forecast.length
           ? html`<div class="legend">
               ${
                 planShown
@@ -357,7 +357,6 @@ class EnergyPriceGraphCard extends LitElement {
               }
               ${forecast.length ? html`<span><i class="dashed"></i>Predbat prices</span>` : nothing}
               ${planShown ? html`<span>Predbat plan</span>` : nothing}
-              ${cheapest ? html`<span><i style="background:${pal.green}"></i>Cheapest ${windowHours}h</span>` : nothing}
             </div>`
           : nothing
       }
