@@ -30,6 +30,15 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
@@ -46,5 +55,11 @@ jobs:
           # Optional: Add claude_args to customize behavior and configuration
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr *)'
+          #
+          # Node deps are installed above, but Claude still needs explicit Bash
+          # permission to run them (no interactive approval in CI) so it can
+          # actually run tests/lint/build and generate before/after screenshots
+          # per CLAUDE.md instead of skipping verification.
+          claude_args: >-
+            --allowedTools "Bash(npm ci),Bash(npm run typecheck),Bash(npm run lint),Bash(npm run lint:fix),Bash(npm test),Bash(npm run build),Bash(npm run size),Bash(npm run test:e2e),Bash(npm run screenshot),Bash(npm run screenshot *)"
 
