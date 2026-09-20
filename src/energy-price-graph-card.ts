@@ -16,7 +16,7 @@ import {
   slotOverlapsSession,
 } from './data';
 import { buildConfigForm } from './form';
-import { parseBatteryWindows, predbatEntityIds } from './predbat';
+import { hasWindowIn, parseBatteryWindows, predbatEntityIds } from './predbat';
 import { buildStubConfig } from './stub';
 import type { EnergyPriceGraphCardConfig, HomeAssistant } from './types';
 
@@ -187,13 +187,15 @@ class EnergyPriceGraphCard extends LitElement {
     const spanHours = clampHours(cfg.hours);
     const start = new Date(now);
     start.setMinutes(0, 0, 0);
-    const battery = predbat
-      ? parseBatteryWindows(
-          hass.states[predbat.charge],
-          hass.states[predbat.export],
-          start.getTime() + spanHours * HOUR,
-        )
-      : undefined;
+    // No track when neither plan entity exists (wrong prefix, or Predbat isn't running), rather than an empty one.
+    const battery =
+      predbat && (hass.states[predbat.charge] || hass.states[predbat.export])
+        ? parseBatteryWindows(
+            hass.states[predbat.charge],
+            hass.states[predbat.export],
+            start.getTime() + spanHours * HOUR,
+          )
+        : undefined;
 
     const fmt = (v: number | undefined) => (v === undefined ? '—' : v.toFixed(2));
 
@@ -234,7 +236,7 @@ class EnergyPriceGraphCard extends LitElement {
         }
       </div>
       ${
-        battery
+        battery && hasWindowIn(battery, start.getTime(), start.getTime() + spanHours * HOUR)
           ? html`<div class="legend">
               <span><i style="background:${pal.blue}"></i>Charge</span>
               <span><i style="background:${pal.cyan}"></i>Discharge</span>

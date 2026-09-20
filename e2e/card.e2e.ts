@@ -202,3 +202,10 @@ test('keeps the plot the same height when the Predbat track is added', async ({ 
   const withTrack = await page.locator('energy-price-graph-card svg').first().boundingBox();
   expect(withTrack?.height).toBe((plain?.height ?? 0) + 22);
 });
+
+test('shows no track or legend when the Predbat entities do not exist', async ({ page }) => {
+  const errors = await open(page, 'theme=dark&predbat=1&cfg={"predbat_prefix":"nope"}');
+  await expect(page.locator('energy-price-graph-card svg g.battery')).toHaveCount(0);
+  await expect(page.locator('energy-price-graph-card .legend')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
