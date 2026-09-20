@@ -430,6 +430,20 @@ test.describe('keyboard accessibility', () => {
   });
 });
 
+test('shows no cheapest-window band or legend unless configured', async ({ page }) => {
+  await open(page, 'theme=dark');
+  await expect(page.locator('energy-price-graph-card svg line[stroke-dasharray="2 2"]')).toHaveCount(0);
+  await expect(page.locator('energy-price-graph-card .legend')).toHaveCount(0);
+});
+
+test('shades the cheapest window and labels it in the legend', async ({ page }) => {
+  const errors = await open(page, 'theme=dark&cfg={"cheapest_window_hours":3}');
+  await expect(page.locator('energy-price-graph-card svg')).toContainText('CHEAPEST 3H');
+  await expect(page.locator('energy-price-graph-card .legend')).toContainText('Cheapest 3h');
+  await expect(page.locator('energy-price-graph-card svg line[stroke-dasharray="2 2"]')).toHaveCount(2);
+  expect(errors).toEqual([]);
+});
+
 test.describe('touch', () => {
   test.use({ hasTouch: true });
 

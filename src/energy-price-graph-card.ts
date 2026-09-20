@@ -2,8 +2,10 @@ import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { renderChart } from './chart';
 import { palette, priceColor, priceScale, resolveBands } from './colors';
 import {
+  cheapestWindow,
   clampHeight,
   clampHours,
+  clampWindowHours,
   currentSlotStart,
   fmtTime,
   mergeRates,
@@ -264,6 +266,14 @@ class EnergyPriceGraphCard extends LitElement {
     const fmt = (v: number | undefined) => (v === undefined ? '—' : v.toFixed(2));
 
     const end = start.getTime() + spanHours * HOUR;
+    const windowHours = clampWindowHours(cfg.cheapest_window_hours);
+    const cheapest = windowHours
+      ? cheapestWindow(
+          rates.filter((r) => r.end > start.getTime() && r.start < end),
+          windowHours,
+        )
+      : undefined;
+    const cheapestLabel = windowHours ? `CHEAPEST ${windowHours}H` : '';
     const hoverT = this._hoverX === undefined ? undefined : timeAtX(this._hoverX, this._width, start.getTime(), end);
     const hover = hoverT === undefined ? undefined : hoverInfo({ t: hoverT, rates, forecast, sessions, battery });
     // The tooltip is centred on the slot's visible part, so it doesn't jump around as the pointer moves within it.
@@ -313,6 +323,9 @@ class EnergyPriceGraphCard extends LitElement {
                 priceScale: scale,
                 bands,
                 hover,
+                cheapestWindow: cheapest,
+                cheapestLabel,
+                cheapestColor: pal.green,
               })
             : nothing
         }
@@ -334,7 +347,7 @@ class EnergyPriceGraphCard extends LitElement {
         }
       </div>
       ${
-        planShown || forecast.length
+        planShown || forecast.length || cheapest
           ? html`<div class="legend">
               ${
                 planShown
@@ -344,6 +357,7 @@ class EnergyPriceGraphCard extends LitElement {
               }
               ${forecast.length ? html`<span><i class="dashed"></i>Predbat prices</span>` : nothing}
               ${planShown ? html`<span>Predbat plan</span>` : nothing}
+              ${cheapest ? html`<span><i style="background:${pal.green}"></i>Cheapest ${windowHours}h</span>` : nothing}
             </div>`
           : nothing
       }

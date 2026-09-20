@@ -17,6 +17,7 @@ const LABELS: Record<string, string> = {
   expensive_above: 'Expensive above',
   hours: 'Hours shown',
   height: 'Chart height (px)',
+  cheapest_window_hours: 'Cheapest window (hours)',
   incentive_events_attribute: 'Incentive events attribute',
   predbat_prefix: 'Predbat entity prefix',
   predbat_rates: 'Show Predbat predicted rates',
@@ -32,6 +33,7 @@ const HELPERS: Record<string, string> = {
   predbat_rates: "Fills the chart after the last published rate with Predbat's predictions, marked with a dotted line.",
   cheap_below: 'Optional. In the card unit. Rates below this are green; set with or without Expensive above.',
   expensive_above: 'Optional. In the card unit. Rates at or above this are red; those in between are amber.',
+  cheapest_window_hours: 'Optional. Shades the cheapest contiguous run of this many hours in the visible rates.',
   rate_multiplier: 'Applied to raw values. 100 converts £ to p.',
 };
 
@@ -67,6 +69,7 @@ export const buildConfigForm = () => ({
         { name: 'expensive_above', selector: { number: { mode: 'box', step: 'any' } } },
         { name: 'hours', selector: { number: { min: 6, max: 48, mode: 'box' } } },
         { name: 'height', selector: { number: { min: 100, max: 500, mode: 'box' } } },
+        { name: 'cheapest_window_hours', selector: { number: { min: 1, max: 12, mode: 'box' } } },
       ],
     },
   ],

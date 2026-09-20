@@ -35,6 +35,8 @@ export interface EnergyPriceGraphCardConfig {
   hours?: number;
   /** Chart height in px (default 190). */
   height?: number;
+  /** Shades the cheapest contiguous run of this many hours in the visible rates. Unset disables it. */
+  cheapest_window_hours?: number;
 }
 
 export interface Rate {
