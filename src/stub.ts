@@ -18,5 +18,6 @@ export const buildStubConfig = (ids: string[]): Partial<EnergyPriceGraphCardConf
     current_day_rates_entity: dayRates,
     next_day_rates_entity: sibling('event', 'next_day_rates'),
     incentive_events_entity: find(/^event\..*_octoplus_power_down_events$/),
+    predbat_prefix: ids.includes('predbat.best_charge_limit') ? 'predbat' : '',
   };
 };

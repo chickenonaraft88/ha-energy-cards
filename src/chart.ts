@@ -2,8 +2,9 @@ import { nothing, svg, type TemplateResult } from 'lit';
 import { fmtTick, xTicks, yAxis } from './axis';
 import { gradientStops } from './colors';
 import { fmtTime } from './data';
-import { badgeWidth, clearOf } from './layout';
-import type { Rate, Session } from './types';
+import { badgeWidth, clearOf, fitLabel } from './layout';
+import { windowLabels, windowTitle } from './predbat';
+import type { BatteryWindow, Rate, Session } from './types';
 
 export interface ChartInput {
   uid: string;
@@ -15,6 +16,10 @@ export interface ChartInput {
   start: number;
   end: number;
   sessions: Session[];
+  /** Predbat plan windows; undefined when Predbat isn't configured (no track is drawn). */
+  battery?: BatteryWindow[];
+  chargeColor: string;
+  dischargeColor: string;
   nowColor: string;
   incentiveColor: string;
   incentiveLabel: string;
@@ -24,6 +29,12 @@ export interface ChartInput {
 }
 
 const PAD = { left: 36, right: 16, top: 28, bottom: 22 };
+/** Extra height for the battery track under the plot: an 8px gap plus the 14px bar. */
+const TRACK_GAP = 8;
+const TRACK_H = 14;
+const TRACK_SPACE = TRACK_GAP + TRACK_H;
+/** Text on the light cyan discharge bars; white fails contrast on it in either theme. */
+const DISCHARGE_INK = '#06212e';
 /** Top edge shared by the NOW and incentive badges. */
 const BADGE_Y = PAD.top - 24;
 
@@ -34,9 +45,10 @@ const badge = (x: number, y: number, text: string, color: string) => {
 };
 
 export const renderChart = (c: ChartInput): TemplateResult => {
-  const { width: W, height: H } = c;
+  const { width: W } = c;
+  const H = c.height + (c.battery ? TRACK_SPACE : 0);
   const plotW = Math.max(W - PAD.left - PAD.right, 10);
-  const plotH = H - PAD.top - PAD.bottom;
+  const plotH = c.height - PAD.top - PAD.bottom;
 
   const pts: Array<[number, number]> = c.rates.map((r) => [r.start, r.value]);
   const last = c.rates[c.rates.length - 1];
@@ -91,6 +103,8 @@ export const renderChart = (c: ChartInput): TemplateResult => {
         ${badge(clearOf(x1 + 4, labelW, nowVisible ? nowBadge : undefined, 0, W - PAD.right - labelW), BADGE_Y, c.incentiveLabel, c.incentiveColor)}`;
     });
 
+  const track = c.battery ? batteryTrack(c, c.battery, x, PAD.top + plotH + TRACK_GAP, plotW) : nothing;
+
   const nowMarker = nowVisible
     ? svg`<line x1=${nx} x2=${nx} y1=${PAD.top - 8} y2=${PAD.top + plotH} stroke=${c.nowColor}></line>
         ${badge(nowBadge.x, BADGE_Y, 'NOW', c.nowColor)}`
@@ -107,7 +121,28 @@ export const renderChart = (c: ChartInput): TemplateResult => {
       <path d=${area} fill="url(#${gid})" fill-opacity="0.16" stroke="none"></path>
       <path d=${line} fill="none" stroke="url(#${gid})" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"></path>
     </g>
+    ${track}
     ${xLabels}
     ${nowMarker}
   </svg>`;
+};
+
+const batteryTrack = (c: ChartInput, windows: BatteryWindow[], x: (t: number) => number, y: number, plotW: number) => {
+  const bars = windows
+    .filter((w) => w.end > c.start && w.start < c.end)
+    .map((w) => {
+      const x1 = x(Math.max(w.start, c.start));
+      const width = Math.max(x(Math.min(w.end, c.end)) - x1, 1);
+      const discharge = w.kind === 'discharge';
+      const label = fitLabel(width, windowLabels(w));
+      return svg`<g class="window"><title>${windowTitle(w)}</title>
+        <rect x=${x1} y=${y} width=${width} height=${TRACK_H} rx="3" fill=${discharge ? c.dischargeColor : c.chargeColor}></rect>
+        ${label ? svg`<text x=${x1 + width / 2} y=${y + 10.5} text-anchor="middle" font-size="10" font-weight="600" fill=${discharge ? DISCHARGE_INK : '#fff'}>${label}</text>` : nothing}</g>`;
+    });
+  return svg`<g class="battery">
+    <rect x=${PAD.left} y=${y} width=${plotW} height=${TRACK_H} rx="3" fill="rgba(120, 120, 128, 0.12)"></rect>
+    <g fill="none" stroke="var(--secondary-text-color)" stroke-width="1.2"><rect x="9" y=${y + 3} width="15" height="8" rx="1.5"></rect><path d=${`M25.5 ${y + 5.5}v3`}></path></g>
+    <rect x="11" y=${y + 5} width="7" height="4" rx="0.5" fill="var(--secondary-text-color)"></rect>
+    ${bars}
+  </g>`;
 };

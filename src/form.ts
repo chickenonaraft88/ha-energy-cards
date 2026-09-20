@@ -16,6 +16,7 @@ const LABELS: Record<string, string> = {
   hours: 'Hours shown',
   height: 'Chart height (px)',
   incentive_events_attribute: 'Incentive events attribute',
+  predbat_prefix: 'Predbat entity prefix',
 };
 
 const HELPERS: Record<string, string> = {
@@ -24,6 +25,7 @@ const HELPERS: Record<string, string> = {
   current_day_rates_entity: 'Event entity with a "rates" attribute.',
   next_day_rates_entity: "Optional. Empty until tomorrow's rates are published.",
   incentive_events_entity: 'Optional. Shades active/upcoming sessions on the chart.',
+  predbat_prefix: 'Optional, usually "predbat". Shows the planned battery charge/discharge under the chart.',
   rate_multiplier: 'Applied to raw values. 100 converts £ to p.',
 };
 
@@ -44,6 +46,7 @@ export const buildConfigForm = () => ({
     { name: 'current_rate_entity', selector: { entity: { domain: 'sensor' } } },
     { name: 'next_rate_entity', selector: { entity: { domain: 'sensor' } } },
     { name: 'incentive_events_entity', selector: { entity: { domain: 'event' } } },
+    { name: 'predbat_prefix', selector: { text: {} } },
     {
       type: 'expandable',
       title: 'Advanced',

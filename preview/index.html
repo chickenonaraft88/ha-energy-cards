@@ -84,6 +84,29 @@
     },
   };
 
+  // predbat=1: a Predbat plan like the real predbat.best_*_limit entities (change points, %z offsets with no colon).
+  // Windows are hours since midnight today: [start, end, target %].
+  if (q.get('predbat') === '1') {
+    const stamp = (h) => {
+      const d = new Date(today.getTime() + Math.round(h * 60) * 6e4);
+      const p = (n) => String(n).padStart(2, '0');
+      const off = -d.getTimezoneOffset();
+      const zone = `${off < 0 ? '-' : '+'}${p(Math.trunc(Math.abs(off) / 60))}${p(Math.abs(off) % 60)}`;
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}${zone}`;
+    };
+    const results = (windows, idle) => {
+      const out = { [stamp(0)]: idle };
+      for (const [start, end, pct] of windows) { out[stamp(start)] = pct; out[stamp(end)] = idle; }
+      return out;
+    };
+    const charge = [[2, 2.17, 100], [2.5, 4, 100], [4.5, 5, 100], [8, 9.33, 100], [12, 12.17, 100], [13, 14.25, 100],
+      [15, 16, 100], [23, 23.75, 100], [24, 24.92, 100], [25, 42.5, 100]];
+    const discharge = [[1, 2, 15], [2.17, 2.5, 6], [4, 4.5, 51], [9.67, 12, 16], [14.25, 15, 40], [17.5, 19, 16],
+      [21.5, 22.5, 16], [22.67, 23, 1], [23.75, 24, 24], [24.92, 25, 64]];
+    states['predbat.best_charge_limit'] = { state: '100', attributes: { results: results(charge, 0) } };
+    states['predbat.best_export_limit'] = { state: '15', attributes: { results: results(discharge, 100) } };
+  }
+
   const script = document.createElement('script');
   script.type = 'module';
   script.src = '../dist/energy-price-graph-card.js';
@@ -96,6 +119,7 @@
       current_day_rates_entity: 'event.import_current_day_rates',
       next_day_rates_entity: 'event.import_next_day_rates',
       incentive_events_entity: 'event.account_octoplus_power_down_events',
+      ...(q.get('predbat') === '1' ? { predbat_prefix: 'predbat' } : {}),
       ...JSON.parse(q.get('cfg') || '{}'), // e.g. cfg={"hours":0} to override card config
     });
     el.hass = { states, themes: { darkMode: dark } };

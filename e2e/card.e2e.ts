@@ -156,3 +156,49 @@ for (const width of [360, 560]) {
     expect(overflow).toBeLessThanOrEqual(0);
   });
 }
+
+test('shows no battery track unless Predbat is configured', async ({ page }) => {
+  await open(page, 'theme=dark');
+  await expect(page.locator('energy-price-graph-card svg g.battery')).toHaveCount(0);
+  await expect(page.locator('energy-price-graph-card .legend')).toHaveCount(0);
+});
+
+test('draws the Predbat plan as a track that stays clear of the x-axis and labels that fit their bars', async ({
+  page,
+}) => {
+  const errors = await open(page, 'theme=dark&predbat=1');
+  await expect(page.locator('energy-price-graph-card .legend')).toContainText('Predbat plan');
+  const bars = page.locator('energy-price-graph-card svg g.battery > g.window');
+  expect(await bars.count()).toBeGreaterThan(5);
+  await expect(bars.first().locator('title')).toHaveCount(1);
+
+  const geometry = await page.evaluate(() => {
+    const svg = document.querySelector('energy-price-graph-card')?.shadowRoot?.querySelector('svg');
+    const bottom = (el: Element) => el.getBoundingClientRect().bottom;
+    const track = svg?.querySelector('g.battery > rect');
+    const axisTop = Math.min(
+      ...[...(svg?.querySelectorAll('text.axis') ?? [])]
+        .filter((t) => /^\d\d:\d\d$/.test(t.textContent ?? ''))
+        .map((t) => t.getBoundingClientRect().top),
+    );
+    const overflowing = [...(svg?.querySelectorAll('g.battery > g.window') ?? [])].flatMap((g) => {
+      const text = g.querySelector('text');
+      const rect = g.querySelector('rect');
+      if (!text || !rect) return [];
+      const [t, r] = [text.getBoundingClientRect(), rect.getBoundingClientRect()];
+      return t.left < r.left || t.right > r.right ? [text.textContent] : [];
+    });
+    return { trackBottom: track ? bottom(track) : NaN, axisTop, overflowing };
+  });
+  expect(geometry.trackBottom).toBeLessThanOrEqual(geometry.axisTop);
+  expect(geometry.overflowing).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('keeps the plot the same height when the Predbat track is added', async ({ page }) => {
+  await open(page, 'theme=dark');
+  const plain = await page.locator('energy-price-graph-card svg').first().boundingBox();
+  await open(page, 'theme=dark&predbat=1');
+  const withTrack = await page.locator('energy-price-graph-card svg').first().boundingBox();
+  expect(withTrack?.height).toBe((plain?.height ?? 0) + 22);
+});

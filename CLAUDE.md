@@ -27,7 +27,7 @@ CI (`.github/workflows/ci.yml`) runs all of these except `screenshot`, and none 
 
 ## Screenshots
 
-`npm run screenshot` (run `npm run build` first) renders the card with mock data and writes `preview/out/{dark,light,dark-mobile,dark-free}.png`. Use `preview/index.html?theme=dark|light&time=HH:mm&width=px&scenario=flat|nosession&blank=1&entity=pence&cfg={json}` to check other states (`blank=1` makes the rate sensors report `''`; `entity=pence` makes them report pence instead of £ (pair with `cfg={"rate_multiplier":1}`); `cfg` is merged into the card config, e.g. `cfg={"hours":0}`).
+`npm run screenshot` (run `npm run build` first) renders the card with mock data and writes `preview/out/{dark,light,dark-mobile,dark-free}.png`. Use `preview/index.html?theme=dark|light&time=HH:mm&width=px&scenario=flat|nosession&blank=1&entity=pence&cfg={json}` to check other states (`predbat=1` adds a mock Predbat plan and sets `predbat_prefix`; `blank=1` makes the rate sensors report `''`; `entity=pence` makes them report pence instead of £ (pair with `cfg={"rate_multiplier":1}`); `cfg` is merged into the card config, e.g. `cfg={"hours":0}`).
 
 Those four are the only committed shots. Scenarios for a single change are one-offs: pass them on the command line as `name=query` (`npm run screenshot -- 'gbp-dark=theme=dark&cfg={"unit":"£/kWh","rate_multiplier":1}'`) rather than adding them to `scripts/screenshot.mjs`.
 

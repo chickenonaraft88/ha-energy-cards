@@ -16,6 +16,7 @@ import {
   slotOverlapsSession,
 } from './data';
 import { buildConfigForm } from './form';
+import { parseBatteryWindows, predbatEntityIds } from './predbat';
 import { buildStubConfig } from './stub';
 import type { EnergyPriceGraphCardConfig, HomeAssistant } from './types';
 
@@ -119,10 +120,9 @@ class EnergyPriceGraphCard extends LitElement {
       const cfg = this._config;
       if (!old || !cfg) return true;
       if (old.themes?.darkMode !== this.hass?.themes?.darkMode) return true;
-      return ENTITY_KEYS.some((k) => {
-        const id = cfg[k];
-        return id ? old.states[id] !== this.hass?.states[id] : false;
-      });
+      const ids: Array<string | undefined> = ENTITY_KEYS.map((k) => cfg[k]);
+      if (cfg.predbat_prefix) ids.push(...Object.values(predbatEntityIds(cfg.predbat_prefix)));
+      return ids.some((id) => (id ? old.states[id] !== this.hass?.states[id] : false));
     }
     return true;
   }
@@ -153,6 +153,8 @@ class EnergyPriceGraphCard extends LitElement {
       cfg.incentive_events_entity ? hass.states[cfg.incentive_events_entity] : undefined,
       cfg.incentive_events_attribute ?? 'joined_events',
     );
+
+    const predbat = cfg.predbat_prefix ? predbatEntityIds(cfg.predbat_prefix) : undefined;
 
     // Current / next price: prefer the dedicated sensors, fall back to the rates list.
     const price = (entityId: string | undefined, fallback: number | undefined) => {
@@ -185,6 +187,13 @@ class EnergyPriceGraphCard extends LitElement {
     const spanHours = clampHours(cfg.hours);
     const start = new Date(now);
     start.setMinutes(0, 0, 0);
+    const battery = predbat
+      ? parseBatteryWindows(
+          hass.states[predbat.charge],
+          hass.states[predbat.export],
+          start.getTime() + spanHours * HOUR,
+        )
+      : undefined;
 
     const fmt = (v: number | undefined) => (v === undefined ? '—' : v.toFixed(2));
 
@@ -212,6 +221,9 @@ class EnergyPriceGraphCard extends LitElement {
                 start: start.getTime(),
                 end: start.getTime() + spanHours * HOUR,
                 sessions,
+                battery,
+                chargeColor: pal.blue,
+                dischargeColor: pal.cyan,
                 nowColor: nowLineColor,
                 incentiveColor: pal.purple,
                 incentiveLabel,
@@ -221,6 +233,15 @@ class EnergyPriceGraphCard extends LitElement {
             : nothing
         }
       </div>
+      ${
+        battery
+          ? html`<div class="legend">
+              <span><i style="background:${pal.blue}"></i>Charge</span>
+              <span><i style="background:${pal.cyan}"></i>Discharge</span>
+              <span>Predbat plan</span>
+            </div>`
+          : nothing
+      }
     </ha-card>`;
   }
 
@@ -269,6 +290,24 @@ class EnergyPriceGraphCard extends LitElement {
     .chart {
       margin-top: 4px;
       line-height: 0;
+    }
+    .legend {
+      display: flex;
+      justify-content: flex-end;
+      gap: 16px;
+      padding: 6px 16px 0;
+      font-size: 11px;
+      color: var(--secondary-text-color);
+    }
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend i {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
     }
     svg {
       display: block;
