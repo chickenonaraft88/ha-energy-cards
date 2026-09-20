@@ -1,0 +1,15 @@
+# Groups the generated release notes by label. The labels come from the PR title, see workflows/pr-labels.yml.
+changelog:
+  categories:
+    - title: Breaking changes
+      labels: [breaking]
+    - title: Features
+      labels: [enhancement]
+    - title: Fixes
+      labels: [bug]
+    - title: Dependencies
+      labels: [dependencies]
+    - title: Maintenance
+      labels: [maintenance]
+    - title: Other changes
+      labels: ['*']

@@ -1,0 +1,33 @@
+name: PR labels
+
+on:
+  pull_request:
+    types: [opened, edited, reopened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  label:
+    # Dependabot labels its own PRs.
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Sets the label that .github/release.yml groups release notes by from the PR title (see scripts/pr-labels.mjs).
+      # The title goes through env, never into the script text.
+      - name: Label from the title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mapfile -t out < <(node scripts/pr-labels.mjs)
+          add="${out[0]}"
+          remove="${out[1]}"
+          gh label create breaking --color B60205 --description "Breaking change to config or behaviour" 2>/dev/null || true
+          gh label create maintenance --color C5DEF5 --description "Refactoring, tests, CI and docs" 2>/dev/null || true
+          if [ -n "$add" ]; then gh pr edit "$PR_URL" --add-label "$add"; fi
+          if [ -n "$remove" ]; then gh pr edit "$PR_URL" --remove-label "$remove"; fi
