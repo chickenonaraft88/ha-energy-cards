@@ -4,6 +4,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # PR titles follow the convention in CLAUDE.md: "deps: Bump ..."
+    commit-message:
+      prefix: deps
     groups:
       # Only minor/patch dev updates are grouped (and auto-merged, see
       # workflows/dependabot-auto-merge.yml). Majors come as separate PRs.
@@ -14,3 +17,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # "ci(deps): Bump ..."
+    commit-message:
+      prefix: ci
+      include: scope
