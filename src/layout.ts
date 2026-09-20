@@ -19,3 +19,10 @@ export const clearOf = (x: number, w: number, avoid: Span | undefined, min: numb
   const right = avoid.x + avoid.w + GAP;
   return right <= max ? right : fit(avoid.x - GAP - w);
 };
+
+/** Width of a 10px semibold label plus padding, for labels drawn inside a bar. */
+export const labelFitWidth = (text: string): number => text.length * 5.8 + 12;
+
+/** First candidate (longest first) that fits in `width`, or '' when none does. */
+export const fitLabel = (width: number, candidates: string[]): string =>
+  candidates.find((t) => labelFitWidth(t) <= width) ?? '';

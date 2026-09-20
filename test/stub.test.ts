@@ -19,6 +19,7 @@ describe('buildStubConfig', () => {
       current_day_rates_entity: `event.${imp}_current_day_rates`,
       next_day_rates_entity: `event.${imp}_next_day_rates`,
       incentive_events_entity: 'event.octopus_energy_a_1_octoplus_power_down_events',
+      predbat_prefix: '',
     });
   });
 
@@ -41,7 +42,12 @@ describe('buildStubConfig', () => {
       current_day_rates_entity: `event.${imp}_current_day_rates`,
       next_day_rates_entity: '',
       incentive_events_entity: '',
+      predbat_prefix: '',
     });
+  });
+
+  it('enables Predbat when its plan entities exist', () => {
+    expect(buildStubConfig(['predbat.best_charge_limit', 'predbat.best_export_limit']).predbat_prefix).toBe('predbat');
   });
 
   it('returns all empty strings for an install without the integration', () => {

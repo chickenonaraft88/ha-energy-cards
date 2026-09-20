@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { badgeWidth, clearOf } from '../src/layout';
+import { badgeWidth, clearOf, fitLabel } from '../src/layout';
 
 describe('badgeWidth', () => {
   it('grows with the label length', () => {
@@ -28,5 +28,20 @@ describe('clearOf', () => {
   it('keeps the badge inside the bounds', () => {
     expect(clearOf(-20, 50, undefined, 0, 300)).toBe(0);
     expect(clearOf(400, 50, undefined, 0, 300)).toBe(300);
+  });
+});
+
+describe('fitLabel', () => {
+  const labels = ['▼ Discharge · 16%', '▼ 16%', '▼'];
+
+  it('picks the longest label that fits', () => {
+    expect(fitLabel(200, labels)).toBe('▼ Discharge · 16%');
+    expect(fitLabel(60, labels)).toBe('▼ 16%');
+    expect(fitLabel(20, labels)).toBe('▼');
+  });
+
+  it('gives no label when nothing fits', () => {
+    expect(fitLabel(5, labels)).toBe('');
+    expect(fitLabel(100, [])).toBe('');
   });
 });
