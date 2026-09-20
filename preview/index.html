@@ -52,6 +52,9 @@
     const g = (c, w, a) => a * Math.exp(-(((h - c) / w) ** 2));
     let p = 14 + g(8, 1.6, 8) + g(17.5, 1.7, 22) + g(13, 2.5, -6) + g(3, 2.2, -19);
     if (scenario === 'flat') p = 24 + g(17.5, 2, 4);
+    // Deep midday/overnight troughs (down to about -18p, well past the -7p blue saturation point)
+    // with small positive morning/evening peaks, so the axis, bars and tooltip all cross zero.
+    if (scenario === 'negative') p = -6 + g(8, 1.6, 8) + g(17.5, 1.7, 10) + g(13, 2.5, -4) + g(3, 2.2, -12);
     return p;
   };
   const day = (offset) =>
