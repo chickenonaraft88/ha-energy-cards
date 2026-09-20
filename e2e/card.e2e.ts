@@ -348,6 +348,64 @@ test('the tooltip stays inside a very narrow card', async ({ page }) => {
   }
 });
 
+test.describe('keyboard accessibility', () => {
+  test('the chart has a group role with an aria-label summarising the current price and cheapest slot', async ({
+    page,
+  }) => {
+    await open(page, 'theme=dark');
+    const svg = page.locator('energy-price-graph-card svg');
+    await expect(svg).toHaveAttribute('role', 'group');
+    const label = await svg.getAttribute('aria-label');
+    expect(label).toContain('current price');
+    expect(label).toContain('cheapest');
+  });
+
+  test('Tab reaches the chart in a single stop, on the now slot', async ({ page }) => {
+    await open(page, 'theme=dark');
+    await page.keyboard.press('Tab');
+    const focused = await page.evaluate(() => {
+      const active = document.querySelector('energy-price-graph-card')?.shadowRoot?.activeElement;
+      return active?.getAttribute('aria-label') ?? null;
+    });
+    expect(focused).toContain('17:00 to 17:30');
+    const tabbable = await page.evaluate(
+      () =>
+        document
+          .querySelector('energy-price-graph-card')
+          ?.shadowRoot?.querySelectorAll('.slot-focus[tabindex="0"]').length,
+    );
+    expect(tabbable).toBe(1);
+  });
+
+  test('focusing a slot shows the tooltip, and arrow keys move focus between slots', async ({ page }) => {
+    await open(page, 'theme=dark');
+    const tip = page.locator('energy-price-graph-card .tooltip');
+    await expect(tip).toHaveCount(0);
+    await page.keyboard.press('Tab');
+    await expect(tip).toContainText('17:00–17:30');
+    await page.keyboard.press('ArrowRight');
+    await expect(tip).toContainText('17:30–18:00');
+    await expect(tip).toContainText('POWER DOWN');
+    const describedby = await page.evaluate(() => {
+      const active = document.querySelector('energy-price-graph-card')?.shadowRoot?.activeElement;
+      return active?.getAttribute('aria-describedby');
+    });
+    const tipId = await tip.getAttribute('id');
+    expect(describedby).toBe(tipId);
+    await page.keyboard.press('ArrowLeft');
+    await expect(tip).toContainText('17:00–17:30');
+  });
+
+  test('moving focus off the chart hides the tooltip', async ({ page }) => {
+    await open(page, 'theme=dark');
+    const tip = page.locator('energy-price-graph-card .tooltip');
+    await page.keyboard.press('Tab');
+    await expect(tip).toHaveCount(1);
+    await page.locator('energy-price-graph-card .header').click();
+    await expect(tip).toHaveCount(0);
+  });
+});
+
 test.describe('touch', () => {
   test.use({ hasTouch: true });
 

@@ -2,7 +2,7 @@ import { nothing, svg, type TemplateResult } from 'lit';
 import { fmtTick, xTicks, yAxis } from './axis';
 import { gradientStops, type PriceBands } from './colors';
 import { fmtTime } from './data';
-import { PAD, xAtTime } from './hover';
+import { chartSummary, PAD, xAtTime } from './hover';
 import { badgeWidth, clearOf, clearOfAll, fitLabel, type Span } from './layout';
 import { windowLabels, windowTitle } from './predbat';
 import type { BatteryWindow, Rate, Session } from './types';
@@ -160,6 +160,23 @@ export const renderChart = (c: ChartInput): TemplateResult => {
         fill="var(--card-background-color, #fff)" stroke="var(--primary-text-color)" stroke-width="2"></circle>`
     : nothing;
 
+  // Invisible, keyboard-focusable targets over each slot, so the tooltip that pointer hover shows is also reachable
+  // with Tab/arrow keys. Roving tabindex: one tab stop into the chart, on the hovered slot or else "now".
+  const visibleRates = c.rates.filter((r) => r.end > c.start && r.start < c.end);
+  const activeSlot =
+    (hv && visibleRates.find((r) => r.start === hv.start && r.end === hv.end)) ||
+    visibleRates.find((r) => c.now >= r.start && c.now < r.end) ||
+    visibleRates[0];
+  const tipId = `${c.uid}-tip`;
+  const slotTargets = visibleRates.map((r) => {
+    const x1 = x(Math.max(r.start, c.start));
+    const x2 = x(Math.min(r.end, c.end));
+    return svg`<rect class="slot-focus" x=${x1} y=${PAD.top} width=${Math.max(x2 - x1, 1)} height=${plotH}
+      fill="transparent" tabindex=${r === activeSlot ? 0 : -1}
+      aria-label=${`${fmtTime(r.start)} to ${fmtTime(r.end)}, ${r.value.toFixed(2)}${c.unit}`}
+      aria-describedby=${tipId}></rect>`;
+  });
+
   const track = c.battery ? batteryTrack(c, c.battery, x, PAD.top + plotH + TRACK_GAP, plotW) : nothing;
 
   const nowMarker = nowVisible
@@ -167,7 +184,8 @@ export const renderChart = (c: ChartInput): TemplateResult => {
         ${badge(nowBadge.x, BADGE_Y, 'NOW', c.nowColor)}`
     : nothing;
 
-  return svg`<svg width=${W} height=${H} viewBox="0 0 ${W} ${H}" role="img" aria-label="Energy price graph">
+  const summary = chartSummary({ rates: c.rates, start: c.start, end: c.end, now: c.now, unit: c.unit });
+  return svg`<svg width=${W} height=${H} viewBox="0 0 ${W} ${H}" role="group" aria-label=${summary}>
     <defs>
       <linearGradient id=${gid} gradientUnits="userSpaceOnUse" x1="0" x2="0" y1=${y(yMax)} y2=${y(yMin)}>${stops}</linearGradient>
       <clipPath id=${cid}><rect x=${PAD.left} y=${PAD.top - 8} width=${plotW} height=${plotH + 16}></rect></clipPath>
@@ -191,6 +209,7 @@ export const renderChart = (c: ChartInput): TemplateResult => {
     ${track}
     ${xLabels}
     ${nowMarker}
+    ${slotTargets}
   </svg>`;
 };
 
