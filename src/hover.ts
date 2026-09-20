@@ -1,4 +1,4 @@
-import { rateAt, sessionActive } from './data';
+import { fmtTime, rateAt, sessionActive } from './data';
 import { windowSummary } from './predbat';
 import type { BatteryWindow, Rate, Session } from './types';
 
@@ -59,3 +59,25 @@ export const planText = (plan: NonNullable<HoverInfo['plan']>): string =>
 /** Left edge for a tooltip of width `tipWidth` centred on `x`, kept inside a card `width` wide (pinned left if it can't fit). */
 export const tooltipLeft = (x: number, tipWidth: number, width: number): number =>
   Math.max(0, Math.min(x - tipWidth / 2, width - tipWidth));
+
+export interface ChartSummaryInput {
+  rates: Rate[];
+  start: number;
+  end: number;
+  now: number;
+  unit: string;
+}
+
+/** The chart's `aria-label`: the current price and the cheapest slot in view. */
+export const chartSummary = ({ rates, start, end, now, unit }: ChartSummaryInput): string => {
+  const current = rateAt(rates, now);
+  const visible = rates.filter((r) => r.end > start && r.start < end);
+  const cheapest = visible.reduce<Rate | undefined>((min, r) => (!min || r.value < min.value ? r : min), undefined);
+  const parts = ['Energy price graph'];
+  if (current) parts.push(`current price ${current.value.toFixed(2)}${unit}`);
+  if (cheapest)
+    parts.push(
+      `cheapest ${cheapest.value.toFixed(2)}${unit} from ${fmtTime(cheapest.start)} to ${fmtTime(cheapest.end)}`,
+    );
+  return parts.join(', ');
+};

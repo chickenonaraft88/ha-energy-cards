@@ -124,6 +124,29 @@ class EnergyPriceGraphCard extends LitElement {
     this._hoverX = undefined;
   };
 
+  // Focusing a slot (Tab, or arrow-key navigation below) shows the same tooltip pointer hover does: the rects'
+  // x/width are in the same pixel space as _hoverX, since the SVG has no scaling relative to the chart div.
+  private _focusSlot = (e: FocusEvent): void => {
+    const target = e.target as Element;
+    if (!target.classList?.contains('slot-focus')) return;
+    this._hoverX = Number(target.getAttribute('x')) + Number(target.getAttribute('width')) / 2;
+  };
+
+  private _blurSlot = (e: FocusEvent): void => {
+    const related = e.relatedTarget as Node | null;
+    if (!related || !(e.currentTarget as Element).contains(related)) this._hoverX = undefined;
+  };
+
+  // Left/Right move the roving tab stop between slots; the chart re-renders with the new one focusable.
+  private _navSlot = (e: KeyboardEvent): void => {
+    const target = e.target as Element;
+    if (!target.classList?.contains('slot-focus') || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+    e.preventDefault();
+    const slots = [...(e.currentTarget as Element).querySelectorAll('.slot-focus')];
+    const next = slots[slots.indexOf(target) + (e.key === 'ArrowRight' ? 1 : -1)] as SVGElement | undefined;
+    next?.focus();
+  };
+
   protected updated(): void {
     this._observe();
     const tip = this.renderRoot.querySelector<HTMLElement>('.tooltip');
@@ -265,7 +288,8 @@ class EnergyPriceGraphCard extends LitElement {
         </div>
       </div>
       <div class="chart" @pointerdown=${this._point} @pointermove=${this._point} @pointerleave=${this._leave}
-        @pointercancel=${this._cancel}>
+        @pointercancel=${this._cancel} @focusin=${this._focusSlot} @focusout=${this._blurSlot}
+        @keydown=${this._navSlot}>
         ${
           this._width
             ? renderChart({
@@ -295,6 +319,7 @@ class EnergyPriceGraphCard extends LitElement {
         ${
           hover
             ? html`<div
+                id="${this._uid}-tip"
                 class="tooltip"
                 role="tooltip"
                 style="left:${tooltipLeft(hoverMid, this._tipWidth, this._width)}px"
@@ -450,6 +475,15 @@ class EnergyPriceGraphCard extends LitElement {
     }
     svg line {
       stroke-width: 1;
+    }
+    svg .slot-focus {
+      outline: none;
+    }
+    svg .slot-focus:focus-visible {
+      fill: var(--primary-text-color);
+      fill-opacity: 0.08;
+      stroke: var(--primary-color, #03a9f4);
+      stroke-width: 2;
     }
   `;
 }

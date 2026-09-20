@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hoverInfo, PAD, planText, timeAtX, tooltipLeft, xAtTime } from '../src/hover';
+import { chartSummary, hoverInfo, PAD, planText, timeAtX, tooltipLeft, xAtTime } from '../src/hover';
 import type { BatteryWindow, Rate } from '../src/types';
 
 const H = 3600000;
@@ -61,6 +61,40 @@ describe('planText', () => {
   it('describes windows and idle', () => {
     expect(planText('idle')).toBe('Idle');
     expect(planText({ start: 0, end: 1, kind: 'discharge', target: 20 })).toBe('Discharge to 20%');
+  });
+});
+
+describe('chartSummary', () => {
+  // A local-time date avoids fmtTime's output depending on the test runner's timezone offset from epoch 0.
+  const at = (h: number, m = 0) => new Date(2026, 0, 15, h, m).getTime();
+  const summaryRates: Rate[] = [
+    { start: at(0), end: at(1), value: 20 },
+    { start: at(1), end: at(2), value: 10 },
+    { start: at(2), end: at(3), value: 30 },
+  ];
+
+  it('reports the current price and the cheapest slot in view', () => {
+    expect(chartSummary({ rates: summaryRates, start: at(0), end: at(3), now: at(0, 5), unit: 'p/kWh' })).toBe(
+      'Energy price graph, current price 20.00p/kWh, cheapest 10.00p/kWh from 01:00 to 02:00',
+    );
+  });
+
+  it('excludes slots outside the visible window from the cheapest search', () => {
+    expect(chartSummary({ rates: summaryRates, start: at(1), end: at(2), now: at(1, 5), unit: 'p/kWh' })).toBe(
+      'Energy price graph, current price 10.00p/kWh, cheapest 10.00p/kWh from 01:00 to 02:00',
+    );
+  });
+
+  it('omits the current price when no rate covers now', () => {
+    expect(chartSummary({ rates: summaryRates, start: at(0), end: at(3), now: at(5), unit: 'p/kWh' })).toBe(
+      'Energy price graph, cheapest 10.00p/kWh from 01:00 to 02:00',
+    );
+  });
+
+  it('is just the plain label with no rates', () => {
+    expect(chartSummary({ rates: [], start: at(0), end: at(1), now: at(0, 5), unit: 'p/kWh' })).toBe(
+      'Energy price graph',
+    );
   });
 });
 
