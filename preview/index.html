@@ -109,10 +109,11 @@
       [21.5, 22.5, 16], [22.67, 23, 1], [23.75, 24, 24], [24.92, 25, 64]];
     // predbat.rates: predicted import rates in pence for every half hour, yesterday to tomorrow, keyed like the plan.
     // They differ a little from the published ones so a real vs predicted mismatch would show.
+    const shift = Number(q.get('pbshift') || 0); // pbshift=-30: predicted rates that sit well below the published ones
     const rates = {};
     for (let i = -48; i < 96; i++) {
       const h = i / 2;
-      rates[stamp(h)] = Math.round((pence(((h % 24) + 24) % 24) + 1.5) * 100) / 100;
+      rates[stamp(h)] = Math.round((pence(((h % 24) + 24) % 24) + 1.5 + shift) * 100) / 100;
     }
     states['predbat.rates'] = { state: '14', attributes: { results: rates } };
     states['predbat.best_charge_limit'] = { state: '100', attributes: { results: results(charge, 0) } };

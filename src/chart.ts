@@ -59,10 +59,12 @@ export const renderChart = (c: ChartInput): TemplateResult => {
   const last = c.rates[c.rates.length - 1];
   if (last) pts.push([last.end, last.value]);
 
-  // Forecast points from the divider on, so the real line's last point isn't joined to them with a slanted segment.
-  const fpts: Array<[number, number]> = (c.forecast ?? []).map((r) => [r.start, r.value]);
+  // The forecast is joined to the real line's last point with a short solid step at the divider, so the line is
+  // continuous even when the predicted prices sit far from the real ones.
+  const fwd: Array<[number, number]> = (c.forecast ?? []).map((r) => [r.start, r.value]);
   const flast = c.forecast?.[c.forecast.length - 1];
-  if (flast) fpts.push([flast.end, flast.value]);
+  if (flast) fwd.push([flast.end, flast.value]);
+  const fpts: Array<[number, number]> = last && fwd.length ? [[last.end, last.value], ...fwd] : fwd;
   const divider = last && fpts.length ? last.end : undefined;
 
   const visible = [...pts, ...fpts].filter(([t]) => t >= c.start && t <= c.end);
@@ -82,9 +84,10 @@ export const renderChart = (c: ChartInput): TemplateResult => {
 
   const path = (p: Array<[number, number]>) =>
     p.map(([t, v], i) => `${i ? 'L' : 'M'}${x(t).toFixed(1)},${y(v).toFixed(1)}`).join('');
-  const fline = fpts.length ? path(fpts) : '';
+  const fline = fwd.length ? path(fwd) : '';
+  const fjoin = fpts.length > fwd.length ? path(fpts.slice(0, 2)) : '';
   const farea = fpts.length
-    ? `${fline}L${x(fpts[fpts.length - 1][0]).toFixed(1)},${y0.toFixed(1)}L${x(fpts[0][0]).toFixed(1)},${y0.toFixed(1)}Z`
+    ? `${path(fpts)}L${x(fpts[fpts.length - 1][0]).toFixed(1)},${y0.toFixed(1)}L${x(fpts[0][0]).toFixed(1)},${y0.toFixed(1)}Z`
     : '';
 
   const gid = `g-${c.uid}`;
@@ -156,10 +159,11 @@ export const renderChart = (c: ChartInput): TemplateResult => {
     ${sessions}
     <g clip-path="url(#${cid})">
       <path d=${area} fill="url(#${gid})" fill-opacity="0.16" stroke="none"></path>
-      <path d=${line} fill="none" stroke="url(#${gid})" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"></path>
+      <path class="price-line" d=${line} fill="none" stroke="url(#${gid})" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"></path>
       ${
         fpts.length
           ? svg`<path class="forecast" d=${farea} fill="url(#${gid})" fill-opacity="0.08" stroke="none"></path>
+      <path class="forecast-join" d=${fjoin} fill="none" stroke="url(#${gid})" stroke-opacity="0.75" stroke-width="3"></path>
       <path class="forecast" d=${fline} fill="none" stroke="url(#${gid})" stroke-opacity="0.75" stroke-width="3" stroke-dasharray="5 5" stroke-linejoin="round"></path>`
           : nothing
       }
