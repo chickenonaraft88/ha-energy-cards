@@ -24,4 +24,11 @@ Before opening a PR also run `npm run lint` (Biome; `npm run lint:fix` applies f
 
 ## Releases
 
-Maintainers publish a release by pushing a tag like `v0.1.3`. The release workflow builds the bundle and attaches `energy-price-graph-card.js`, which is what HACS installs.
+The git tag is the version; there is no version-bump PR. Maintainers publish a release by pushing a tag from an up-to-date `main` with CI green:
+
+```sh
+git tag v0.1.4
+git push origin v0.1.4
+```
+
+The release workflow sets the package version from the tag, builds the bundle, and publishes a release with generated notes and `energy-price-graph-card.js` attached, which is what HACS installs. `package.json` stays at `0.0.0-dev`. The release notes list merged PR titles, so keep those descriptive.

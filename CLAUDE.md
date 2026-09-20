@@ -9,7 +9,7 @@ Lit/TypeScript Lovelace card, bundled with esbuild to `dist/energy-price-graph-c
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | Biome check; fails on warnings. `npm run lint:fix` applies fixes. |
 | `npm test` | Vitest unit tests in `test/` (pure logic in `src/data.ts`, `src/colors.ts`, `src/stub.ts`) |
-| `npm run build` | Bundle to `dist/` |
+| `npm run build` | Bundle to `dist/` (`scripts/build.mjs`, bakes in the version from `package.json`) |
 | `npm run size` | Fails if the bundle is over 40 kB (run after build) |
 | `npm run test:e2e` | Playwright tests in `e2e/` against `preview/index.html`, using installed Chrome (`PW_CHANNEL=msedge` for Edge; run after build) |
 | `npm run screenshot` | Render preview PNGs, see below |
@@ -22,7 +22,8 @@ CI (`.github/workflows/ci.yml`) runs all of these except `screenshot`, and none 
 - Card logic that doesn't need a DOM belongs in a pure module under `src/` with a test in `test/`. `energy-price-graph-card.ts` registers a custom element on import, so it can't be unit tested directly.
 - Bug fixes get a regression test. Layout bugs (clipping, overlap) go in `e2e/card.e2e.ts`.
 - Work on a branch and open a PR rather than pushing to `main`.
-- Releases: push a tag like `v0.1.3`; the release workflow builds and attaches `energy-price-graph-card.js`, which is what HACS installs. Dependabot opens weekly dependency PRs.
+- Releases: the git tag is the version, so don't bump `package.json` (it stays `0.0.0-dev`) or open a version PR. See "Releasing" below. Dependabot opens weekly dependency PRs.
+- The card's version comes from `package.json` via `scripts/build.mjs` (`__CARD_VERSION__`); don't hard-code it in `src/`.
 
 ## Screenshots
 
@@ -53,3 +54,13 @@ Skip screenshots for changes with no visual effect (docs, CI, types-only).
 ### Reviewing a PR
 
 For visual changes, check that the PR shows both before and after screenshots (description or comments) and that the data in them actually exercises the change. If either is missing, or the screenshots show default data where nothing would differ, say so in the review and treat the PR as not ready. To verify, check out the branch, run `npm ci && npm run build && npm run screenshot`, and compare against what the PR shows. Look for clipped labels, overlapping badges, wrong colours, and both dark and light themes.
+
+## Releasing
+
+Tag from an up-to-date `main` with CI green, and only when the user asks for a release. Pushing the tag publishes it, so confirm first.
+
+1. Pick the next version by looking at the latest tag (`git tag --sort=-v:refname | head -1`) and what merged since (`git log <tag>..main --oneline`): patch for fixes, minor for new options or features.
+2. `git tag vX.Y.Z && git push origin vX.Y.Z`.
+3. The release workflow (`.github/workflows/release.yml`) runs `npm version` from the tag, builds, and publishes the GitHub release with generated notes and `energy-price-graph-card.js` attached (what HACS installs). Check the run succeeded and the asset is on the release (`gh release view vX.Y.Z`).
+
+The notes are generated from merged PR titles, so write descriptive PR titles. Tags must be `vMAJOR.MINOR.PATCH`.

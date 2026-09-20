@@ -53,6 +53,15 @@ npm run screenshot
 
 `npm run screenshot` renders the card with mock Octopus data (`preview/index.html`) in your local Chrome or Edge and writes PNGs to `preview/out/` (dark, light, mobile width, negative price). To view it live, serve the repo root (e.g. `npx serve`) and open `/preview/index.html?theme=dark`.
 
-Push a tag like `v0.1.1` to publish a release with `energy-price-graph-card.js` attached.
+### Releasing
+
+The git tag is the version. From an up-to-date `main` (with CI green):
+
+```sh
+git tag v0.1.4
+git push origin v0.1.4
+```
+
+The release workflow sets the package version from the tag, builds, and publishes a GitHub release with generated notes and `energy-price-graph-card.js` attached, which is what HACS installs. No version-bump commit or PR is needed: `package.json` stays at `0.0.0-dev`, and the built card logs the tag's version in the browser console. Tags must look like `vMAJOR.MINOR.PATCH`.
 
 `npm run test:e2e` runs the Playwright tests in `e2e/` against the preview page using your installed Chrome (`PW_CHANNEL=msedge` for Edge).

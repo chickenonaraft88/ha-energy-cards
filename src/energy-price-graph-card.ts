@@ -19,7 +19,9 @@ import { buildConfigForm } from './form';
 import { buildStubConfig } from './stub';
 import type { EnergyPriceGraphCardConfig, HomeAssistant } from './types';
 
-const CARD_VERSION = '0.1.0';
+// Injected by scripts/build.mjs from package.json (the release workflow sets that from the tag).
+declare const __CARD_VERSION__: string;
+const CARD_VERSION = __CARD_VERSION__;
 const HOUR = 3600000;
 let uidCounter = 0;
 
