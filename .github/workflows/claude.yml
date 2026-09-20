@@ -48,9 +48,13 @@ jobs:
           # Lets assigning an issue to the "claude" bot trigger the action,
           # not just an @claude mention. The `if:` above widens to any
           # 'assigned' action so this input can actually see the event; it
-          # still only fires when the assignee is really "claude" (a no-op
-          # job otherwise).
-          assignee_trigger: 'claude'
+          # still only fires when the assignee is really the bot (a no-op
+          # job otherwise). Must be the bot's real login, "claude[bot]" -
+          # GitHub itself rejects assigning the bare "claude" as invalid,
+          # and "claude" alone never matches the actual assignee, so the
+          # action silently no-ops ("Trigger result: false") even when the
+          # if: gate lets the job start.
+          assignee_trigger: 'claude[bot]'
 
           # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
