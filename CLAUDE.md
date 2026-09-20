@@ -10,7 +10,7 @@ Lit/TypeScript Lovelace card, bundled with esbuild to `dist/energy-price-graph-c
 | `npm run lint` | Biome check; fails on warnings. `npm run lint:fix` applies fixes. |
 | `npm test` | Vitest unit tests in `test/` (pure logic in `src/data.ts`, `src/colors.ts`, `src/stub.ts`) |
 | `npm run build` | Bundle to `dist/` (`scripts/build.mjs`, bakes in the version from `package.json`) |
-| `npm run size` | Fails if the bundle is over 41 kB (run after build) |
+| `npm run size` | Fails if the bundle is over 45 kB (run after build) |
 | `npm run test:e2e` | Playwright tests in `e2e/` against `preview/index.html`, using installed Chrome (`PW_CHANNEL=msedge` for Edge; run after build) |
 | `npm run screenshot` | Render preview PNGs, see below |
 
