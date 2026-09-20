@@ -20,6 +20,21 @@ export const clearOf = (x: number, w: number, avoid: Span | undefined, min: numb
   return right <= max ? right : fit(avoid.x - GAP - w);
 };
 
+/**
+ * Left edge for a badge of width `w` that wants to sit at `x`, clear of every span in `avoid` at once and inside
+ * [min, max]. Takes the nearest position that fits (just past either side of any span), and falls back to `x`
+ * clamped when the row is too crowded for any.
+ */
+export const clearOfAll = (x: number, w: number, avoid: Span[], min: number, max: number): number => {
+  const fit = (v: number) => Math.max(min, Math.min(v, max));
+  const free = (left: number) => avoid.every((a) => left >= a.x + a.w + GAP || left + w + GAP <= a.x);
+  const candidates = [x, ...avoid.flatMap((a) => [a.x + a.w + GAP, a.x - GAP - w])]
+    .map(fit)
+    .filter(free)
+    .sort((a, b) => Math.abs(a - x) - Math.abs(b - x));
+  return candidates[0] ?? fit(x);
+};
+
 /** Width of a 10px semibold label plus padding, for labels drawn inside a bar. */
 export const labelFitWidth = (text: string): number => text.length * 5.8 + 12;
 

@@ -2,7 +2,7 @@ import { nothing, svg, type TemplateResult } from 'lit';
 import { fmtTick, xTicks, yAxis } from './axis';
 import { gradientStops } from './colors';
 import { fmtTime } from './data';
-import { badgeWidth, clearOf, fitLabel, type Span } from './layout';
+import { badgeWidth, clearOf, clearOfAll, fitLabel, type Span } from './layout';
 import { windowLabels, windowTitle } from './predbat';
 import type { BatteryWindow, Rate, Session } from './types';
 
@@ -126,9 +126,12 @@ export const renderChart = (c: ChartInput): TemplateResult => {
     });
 
   const forecastW = badgeWidth(FORECAST_LABEL);
-  const forecastX = placed.reduce(
-    (bx, span) => clearOf(bx, forecastW, span, 0, W - PAD.right - forecastW),
+  const forecastX = clearOfAll(
     divider === undefined ? 0 : x(divider) + 4,
+    forecastW,
+    placed,
+    0,
+    W - PAD.right - forecastW,
   );
   const dividerMarker =
     divider !== undefined && divider > c.start && divider < c.end
