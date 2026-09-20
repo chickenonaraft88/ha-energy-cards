@@ -1,5 +1,5 @@
 import { fmtTime } from './data';
-import type { BatteryWindow, HassEntity } from './types';
+import type { BatteryWindow, HassEntity, Rate } from './types';
 
 /** In `best_export_limit`, 100 means no export window and 99 means hold SoC without a forced discharge. */
 const EXPORT_FREEZE = 99;
@@ -7,6 +7,7 @@ const EXPORT_FREEZE = 99;
 export const predbatEntityIds = (prefix: string) => ({
   charge: `${prefix}.best_charge_limit`,
   export: `${prefix}.best_export_limit`,
+  rates: `${prefix}.rates`,
 });
 
 // Predbat formats keys as %Y-%m-%dT%H:%M:%S%z, e.g. 2026-09-20T02:00:00+0100. The colon-less offset is not valid
@@ -75,6 +76,23 @@ export const parseBatteryWindows = (
 /** Whether any window overlaps [start, end), i.e. there is something to show in the chart. */
 export const hasWindowIn = (windows: BatteryWindow[], start: number, end: number): boolean =>
   windows.some((w) => w.end > start && w.start < end);
+
+const SLOT_MS = 30 * 60 * 1000;
+
+/**
+ * Predbat's predicted import rates from `predbat.rates`, for the stretch the real rates don't cover. Its `results` are
+ * change points in pence, each holding until the next. `scale` is the display unit's size relative to pence (see
+ * `priceScale`). Only time from `after` (the end of the real rates) onwards is returned.
+ */
+export const parseForecastRates = (entity: HassEntity | undefined, scale: number, after: number): Rate[] => {
+  const pts = parseResults(entity);
+  const out: Rate[] = [];
+  pts.forEach(([t, pence], i) => {
+    const end = i + 1 < pts.length ? pts[i + 1][0] : t + SLOT_MS;
+    if (end > after) out.push({ start: Math.max(t, after), end, value: pence * scale });
+  });
+  return out;
+};
 
 /**
  * Label candidates for a window, longest first. Charge is nearly always 100%, so its target is only shown when it

@@ -16,7 +16,7 @@ import {
   slotOverlapsSession,
 } from './data';
 import { buildConfigForm } from './form';
-import { hasWindowIn, parseBatteryWindows, predbatEntityIds } from './predbat';
+import { hasWindowIn, parseBatteryWindows, parseForecastRates, predbatEntityIds } from './predbat';
 import { buildStubConfig } from './stub';
 import type { EnergyPriceGraphCardConfig, HomeAssistant } from './types';
 
@@ -197,6 +197,14 @@ class EnergyPriceGraphCard extends LitElement {
           )
         : undefined;
 
+    const lastReal = rates[rates.length - 1]?.end;
+    const forecast =
+      predbat && cfg.predbat_rates !== false && lastReal !== undefined
+        ? parseForecastRates(hass.states[predbat.rates], scale, lastReal).filter(
+            (r) => r.start < start.getTime() + spanHours * HOUR,
+          )
+        : [];
+
     const fmt = (v: number | undefined) => (v === undefined ? '—' : v.toFixed(2));
 
     return html`<ha-card>
@@ -223,6 +231,7 @@ class EnergyPriceGraphCard extends LitElement {
                 start: start.getTime(),
                 end: start.getTime() + spanHours * HOUR,
                 sessions,
+                forecast,
                 battery,
                 chargeColor: pal.blue,
                 dischargeColor: pal.cyan,
@@ -240,6 +249,7 @@ class EnergyPriceGraphCard extends LitElement {
           ? html`<div class="legend">
               <span><i style="background:${pal.blue}"></i>Charge</span>
               <span><i style="background:${pal.cyan}"></i>Discharge</span>
+              ${forecast.length ? html`<span><i class="dashed"></i>Predbat prices</span>` : nothing}
               <span>Predbat plan</span>
             </div>`
           : nothing
@@ -310,6 +320,13 @@ class EnergyPriceGraphCard extends LitElement {
       width: 10px;
       height: 10px;
       border-radius: 2px;
+    }
+    .legend i.dashed {
+      width: 14px;
+      height: 0;
+      border-top: 2px dashed var(--secondary-text-color);
+      border-radius: 0;
+      background: none;
     }
     svg {
       display: block;

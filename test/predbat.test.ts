@@ -4,6 +4,7 @@ import {
   parseBatteryWindows,
   parseChargeWindows,
   parseExportWindows,
+  parseForecastRates,
   parseResults,
   predbatEntityIds,
   windowLabels,
@@ -37,6 +38,7 @@ describe('predbatEntityIds', () => {
     expect(predbatEntityIds('predbat')).toEqual({
       charge: 'predbat.best_charge_limit',
       export: 'predbat.best_export_limit',
+      rates: 'predbat.rates',
     });
     expect(predbatEntityIds('predbat_2').charge).toBe('predbat_2.best_charge_limit');
   });
@@ -189,5 +191,37 @@ describe('hasWindowIn', () => {
     expect(hasWindowIn([], t(20, 0), t(21, 0))).toBe(false);
     expect(hasWindowIn([w], t(20, 4), t(20, 12))).toBe(false);
     expect(hasWindowIn([w], t(19, 0), t(20, 2))).toBe(false);
+  });
+});
+
+describe('parseForecastRates', () => {
+  // Excerpt of predbat.rates `results`: half-hourly, in pence.
+  const rates = ent({
+    '2026-09-20T22:00:00+0100': 13.25,
+    '2026-09-20T22:30:00+0100': 7.52,
+    '2026-09-20T23:00:00+0100': -0.2,
+    '2026-09-20T23:30:00+0100': -3.51,
+  });
+
+  it('keeps only the time after the real rates end, so published rates always win', () => {
+    expect(parseForecastRates(rates, 1, t(20, 23))).toEqual([
+      { start: t(20, 23), end: t(20, 23, 30), value: -0.2 },
+      { start: t(20, 23, 30), end: t(20, 24), value: -3.51 },
+    ]);
+  });
+
+  it('starts a slot that straddles the cut-off at the cut-off', () => {
+    const [first] = parseForecastRates(rates, 1, t(20, 22, 45));
+    expect(first).toEqual({ start: t(20, 22, 45), end: t(20, 23), value: 7.52 });
+  });
+
+  it('converts pence to the display unit', () => {
+    expect(parseForecastRates(rates, 0.01, t(20, 23))[0].value).toBeCloseTo(-0.002);
+  });
+
+  it('gives nothing when the real rates already cover the plan, or there is no plan', () => {
+    expect(parseForecastRates(rates, 1, t(21, 12))).toEqual([]);
+    expect(parseForecastRates(undefined, 1, t(20, 23))).toEqual([]);
+    expect(parseForecastRates({ state: 'x', attributes: {} }, 1, t(20, 23))).toEqual([]);
   });
 });
