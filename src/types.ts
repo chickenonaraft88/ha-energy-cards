@@ -23,6 +23,10 @@ export interface EnergyPriceGraphCardConfig {
   unit?: string;
   /** Multiplier applied to raw values to reach display units (default 100: £ -> p). */
   rate_multiplier?: number;
+  /** Rates below this (in the card's unit) are coloured green. Setting either threshold switches to green/amber/red bands. */
+  cheap_below?: number;
+  /** Rates at or above this (in the card's unit) are coloured red; those between the thresholds are amber. */
+  expensive_above?: number;
   /** Entity prefix of a Predbat install (usually `predbat`). Shows its charge/discharge plan under the chart. */
   predbat_prefix?: string;
   /** Fill the chart past the end of the real rates with Predbat's predicted rates (default true; needs `predbat_prefix`). */

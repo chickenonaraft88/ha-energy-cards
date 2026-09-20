@@ -1,6 +1,6 @@
 import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { renderChart } from './chart';
-import { palette, priceColor, priceScale } from './colors';
+import { palette, priceColor, priceScale, resolveBands } from './colors';
 import {
   clampHeight,
   clampHours,
@@ -167,6 +167,7 @@ class EnergyPriceGraphCard extends LitElement {
     const now = Date.now();
     const unit = cfg.unit ?? 'p/kWh';
     const scale = priceScale(unit);
+    const bands = resolveBands(cfg.cheap_below, cfg.expensive_above);
     const incentiveLabel = cfg.incentive_label ?? 'POWER DOWN';
     const freeLabel = cfg.free_label ?? 'FREE';
 
@@ -205,9 +206,9 @@ class EnergyPriceGraphCard extends LitElement {
     const active = sessionActive(sessions, now);
     const nextIncentive = slotOverlapsSession(sessions, nextStart);
     const pal = palette(dark);
-    const curColor = active ? pal.purple : priceColor(curPrice ?? 0, dark, scale);
-    const nextColor = nextIncentive ? pal.purple : priceColor(nextPrice ?? 0, dark, scale);
-    const nowLineColor = priceColor(curPrice ?? 0, dark, scale);
+    const curColor = active ? pal.purple : priceColor(curPrice ?? 0, dark, scale, bands);
+    const nextColor = nextIncentive ? pal.purple : priceColor(nextPrice ?? 0, dark, scale, bands);
+    const nowLineColor = priceColor(curPrice ?? 0, dark, scale, bands);
 
     let curLabel = `NOW · ${fmtTime(curTime)}`;
     if (active) curLabel += ` · ${incentiveLabel}`;
@@ -286,6 +287,7 @@ class EnergyPriceGraphCard extends LitElement {
                 incentiveLabel,
                 unit,
                 priceScale: scale,
+                bands,
                 hover,
               })
             : nothing
