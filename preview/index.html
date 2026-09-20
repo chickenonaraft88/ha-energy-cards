@@ -64,14 +64,18 @@
       };
     });
 
-  const today_rates = day(0);
-  const slot = (t) => today_rates.concat(day(1)).find((r) => Date.parse(r.start) <= t && t < Date.parse(r.end));
+  // until=HH: the published rates stop at HH:00 (0-48, hours since midnight today), as when tomorrow isn't out yet.
+  const until = q.get('until') ? today.getTime() + Number(q.get('until')) * 36e5 : Infinity;
+  const publishedBy = (rates) => rates.filter((r) => Date.parse(r.end) <= until);
+  const today_rates = publishedBy(day(0));
+  const tomorrow_rates = publishedBy(day(1));
+  const slot = (t) => today_rates.concat(tomorrow_rates).find((r) => Date.parse(r.start) <= t && t < Date.parse(r.end));
   const cur = slot(fixedNow), next = slot(fixedNow + 18e5);
   const sessionStart = today.getTime() + 17 * 36e5 + 30 * 6e4;
 
   const states = {
     'event.import_current_day_rates': { state: 'x', attributes: { rates: today_rates } },
-    'event.import_next_day_rates': { state: 'x', attributes: { rates: day(1) } },
+    'event.import_next_day_rates': { state: 'x', attributes: { rates: tomorrow_rates } },
     'sensor.import_current_rate': { state: blank ? '' : String(cur.value_inc_vat), attributes: { rate: { valid_from: cur.start } } },
     'sensor.import_next_rate': { state: blank ? '' : String(next.value_inc_vat), attributes: { rate: { valid_from: next.start } } },
     'event.account_octoplus_power_down_events': {
@@ -103,6 +107,14 @@
       [15, 16, 100], [23, 23.75, 100], [24, 24.92, 100], [25, 42.5, 100]];
     const discharge = [[1, 2, 15], [2.17, 2.5, 6], [4, 4.5, 51], [9.67, 12, 16], [14.25, 15, 40], [17.5, 19, 16],
       [21.5, 22.5, 16], [22.67, 23, 1], [23.75, 24, 24], [24.92, 25, 64]];
+    // predbat.rates: predicted import rates in pence for every half hour, yesterday to tomorrow, keyed like the plan.
+    // They differ a little from the published ones so a real vs predicted mismatch would show.
+    const rates = {};
+    for (let i = -48; i < 96; i++) {
+      const h = i / 2;
+      rates[stamp(h)] = Math.round((pence(((h % 24) + 24) % 24) + 1.5) * 100) / 100;
+    }
+    states['predbat.rates'] = { state: '14', attributes: { results: rates } };
     states['predbat.best_charge_limit'] = { state: '100', attributes: { results: results(charge, 0) } };
     states['predbat.best_export_limit'] = { state: '15', attributes: { results: results(discharge, 100) } };
   }

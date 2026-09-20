@@ -209,3 +209,59 @@ test('shows no track or legend when the Predbat entities do not exist', async ({
   await expect(page.locator('energy-price-graph-card .legend')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+test('fills the chart with dashed Predbat prices behind a dotted divider where the real rates end', async ({ page }) => {
+  const errors = await open(page, 'theme=dark&predbat=1&until=23');
+  const svg = page.locator('energy-price-graph-card svg').first();
+  await expect(svg.locator('line.forecast-divider')).toHaveCount(1);
+  await expect(svg.locator('path.forecast')).toHaveCount(2);
+  await expect(svg).toContainText('PREDICTED');
+  await expect(page.locator('energy-price-graph-card .legend')).toContainText('Predbat prices');
+
+  const geometry = await page.evaluate(() => {
+    const s = document.querySelector('energy-price-graph-card')?.shadowRoot?.querySelector('svg');
+    const box = (el: Element | null | undefined) => el?.getBoundingClientRect();
+    const divider = box(s?.querySelector('line.forecast-divider'));
+    const svgBox = box(s);
+    const badge = [...(s?.querySelectorAll('text') ?? [])].find((t) => t.textContent === 'PREDICTED');
+    const now = [...(s?.querySelectorAll('text') ?? [])].find((t) => t.textContent === 'NOW');
+    const [b, n] = [box(badge), box(now)];
+    return {
+      dividerX: divider?.left ?? NaN,
+      right: svgBox?.right ?? NaN,
+      badgeRight: b?.right ?? NaN,
+      badgeLeft: b?.left ?? NaN,
+      nowRight: n?.right ?? NaN,
+    };
+  });
+  expect(geometry.badgeRight).toBeLessThanOrEqual(geometry.right);
+  expect(geometry.badgeLeft).toBeGreaterThanOrEqual(geometry.nowRight);
+  expect(errors).toEqual([]);
+});
+
+test('draws no forecast when the real rates cover the whole chart, or it is switched off', async ({ page }) => {
+  await open(page, 'theme=dark&predbat=1');
+  await expect(page.locator('energy-price-graph-card svg line.forecast-divider')).toHaveCount(0);
+  await expect(page.locator('energy-price-graph-card .legend')).not.toContainText('Predbat prices');
+  await open(page, 'theme=dark&predbat=1&until=23&cfg={"predbat_rates":false}');
+  await expect(page.locator('energy-price-graph-card svg line.forecast-divider')).toHaveCount(0);
+});
+
+for (const width of [360, 560]) {
+  test(`PREDICTED badge stays clear of NOW and POWER DOWN at ${width}px`, async ({ page }) => {
+    await open(page, `theme=dark&predbat=1&until=23&time=13:30&width=${width}`);
+    const boxes = await page.evaluate(() => {
+      const texts = [...(document.querySelector('energy-price-graph-card')?.shadowRoot?.querySelectorAll('svg text') ?? [])];
+      const box = (label: string) => {
+        const r = texts.find((t) => t.textContent === label)?.previousElementSibling?.getBoundingClientRect();
+        return r ? { left: r.left, right: r.right } : undefined;
+      };
+      return { now: box('NOW'), power: box('POWER DOWN'), predicted: box('PREDICTED') };
+    });
+    for (const other of [boxes.now, boxes.power]) {
+      expect(other).toBeDefined();
+      const clear = (boxes.predicted?.left ?? 0) >= (other?.right ?? Infinity) || (boxes.predicted?.right ?? Infinity) <= (other?.left ?? 0);
+      expect(clear, JSON.stringify(boxes)).toBe(true);
+    }
+  });
+}

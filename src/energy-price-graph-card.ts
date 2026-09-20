@@ -16,7 +16,7 @@ import {
   slotOverlapsSession,
 } from './data';
 import { buildConfigForm } from './form';
-import { hasWindowIn, parseBatteryWindows, predbatEntityIds } from './predbat';
+import { hasWindowIn, parseBatteryWindows, parseForecastRates, predbatEntityIds } from './predbat';
 import { buildStubConfig } from './stub';
 import type { EnergyPriceGraphCardConfig, HomeAssistant } from './types';
 
@@ -197,6 +197,16 @@ class EnergyPriceGraphCard extends LitElement {
           )
         : undefined;
 
+    // The legend explains what is drawn: plan swatches only with plan windows in range, the dashed line only with a forecast.
+    const planShown = !!battery && hasWindowIn(battery, start.getTime(), start.getTime() + spanHours * HOUR);
+    const lastReal = rates[rates.length - 1]?.end;
+    const forecast =
+      predbat && cfg.predbat_rates !== false && lastReal !== undefined
+        ? parseForecastRates(hass.states[predbat.rates], scale, lastReal).filter(
+            (r) => r.start < start.getTime() + spanHours * HOUR,
+          )
+        : [];
+
     const fmt = (v: number | undefined) => (v === undefined ? '—' : v.toFixed(2));
 
     return html`<ha-card>
@@ -223,6 +233,7 @@ class EnergyPriceGraphCard extends LitElement {
                 start: start.getTime(),
                 end: start.getTime() + spanHours * HOUR,
                 sessions,
+                forecast,
                 battery,
                 chargeColor: pal.blue,
                 dischargeColor: pal.cyan,
@@ -236,11 +247,16 @@ class EnergyPriceGraphCard extends LitElement {
         }
       </div>
       ${
-        battery && hasWindowIn(battery, start.getTime(), start.getTime() + spanHours * HOUR)
+        planShown || forecast.length
           ? html`<div class="legend">
-              <span><i style="background:${pal.blue}"></i>Charge</span>
-              <span><i style="background:${pal.cyan}"></i>Discharge</span>
-              <span>Predbat plan</span>
+              ${
+                planShown
+                  ? html`<span><i style="background:${pal.blue}"></i>Charge</span>
+                      <span><i style="background:${pal.cyan}"></i>Discharge</span>`
+                  : nothing
+              }
+              ${forecast.length ? html`<span><i class="dashed"></i>Predbat prices</span>` : nothing}
+              ${planShown ? html`<span>Predbat plan</span>` : nothing}
             </div>`
           : nothing
       }
@@ -310,6 +326,13 @@ class EnergyPriceGraphCard extends LitElement {
       width: 10px;
       height: 10px;
       border-radius: 2px;
+    }
+    .legend i.dashed {
+      width: 14px;
+      height: 0;
+      border-top: 2px dashed var(--secondary-text-color);
+      border-radius: 0;
+      background: none;
     }
     svg {
       display: block;

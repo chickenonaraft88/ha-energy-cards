@@ -17,6 +17,7 @@ const LABELS: Record<string, string> = {
   height: 'Chart height (px)',
   incentive_events_attribute: 'Incentive events attribute',
   predbat_prefix: 'Predbat entity prefix',
+  predbat_rates: 'Show Predbat predicted rates',
 };
 
 const HELPERS: Record<string, string> = {
@@ -26,6 +27,7 @@ const HELPERS: Record<string, string> = {
   next_day_rates_entity: "Optional. Empty until tomorrow's rates are published.",
   incentive_events_entity: 'Optional. Shades active/upcoming sessions on the chart.',
   predbat_prefix: 'Optional, usually "predbat". Shows the planned battery charge/discharge under the chart.',
+  predbat_rates: "Fills the chart after the last published rate with Predbat's predictions, marked with a dotted line.",
   rate_multiplier: 'Applied to raw values. 100 converts £ to p.',
 };
 
@@ -47,6 +49,7 @@ export const buildConfigForm = () => ({
     { name: 'next_rate_entity', selector: { entity: { domain: 'sensor' } } },
     { name: 'incentive_events_entity', selector: { entity: { domain: 'event' } } },
     { name: 'predbat_prefix', selector: { text: {} } },
+    { name: 'predbat_rates', selector: { boolean: {} } },
     {
       type: 'expandable',
       title: 'Advanced',

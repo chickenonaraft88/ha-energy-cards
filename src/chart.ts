@@ -2,7 +2,7 @@ import { nothing, svg, type TemplateResult } from 'lit';
 import { fmtTick, xTicks, yAxis } from './axis';
 import { gradientStops } from './colors';
 import { fmtTime } from './data';
-import { badgeWidth, clearOf, fitLabel } from './layout';
+import { badgeWidth, clearOf, clearOfAll, fitLabel, type Span } from './layout';
 import { windowLabels, windowTitle } from './predbat';
 import type { BatteryWindow, Rate, Session } from './types';
 
@@ -16,6 +16,8 @@ export interface ChartInput {
   start: number;
   end: number;
   sessions: Session[];
+  /** Predbat's predicted rates for the stretch after the real ones end; drawn dashed behind a dotted divider. */
+  forecast?: Rate[];
   /** Predbat plan windows; undefined when Predbat isn't configured (no track is drawn). */
   battery?: BatteryWindow[];
   chargeColor: string;
@@ -35,6 +37,9 @@ const TRACK_H = 14;
 const TRACK_SPACE = TRACK_GAP + TRACK_H;
 /** Text on the light cyan discharge bars; white fails contrast on it in either theme. */
 const DISCHARGE_INK = '#06212e';
+/** Neutral badge colour for the forecast divider; white text on it passes contrast in both themes. */
+const FORECAST_BADGE = '#6b7280';
+const FORECAST_LABEL = 'PREDICTED';
 /** Top edge shared by the NOW and incentive badges. */
 const BADGE_Y = PAD.top - 24;
 
@@ -54,7 +59,13 @@ export const renderChart = (c: ChartInput): TemplateResult => {
   const last = c.rates[c.rates.length - 1];
   if (last) pts.push([last.end, last.value]);
 
-  const visible = pts.filter(([t]) => t >= c.start && t <= c.end);
+  // Forecast points from the divider on, so the real line's last point isn't joined to them with a slanted segment.
+  const fpts: Array<[number, number]> = (c.forecast ?? []).map((r) => [r.start, r.value]);
+  const flast = c.forecast?.[c.forecast.length - 1];
+  if (flast) fpts.push([flast.end, flast.value]);
+  const divider = last && fpts.length ? last.end : undefined;
+
+  const visible = [...pts, ...fpts].filter(([t]) => t >= c.start && t <= c.end);
   if (!visible.length) {
     return svg`<svg width=${W} height=${H} viewBox="0 0 ${W} ${H}"><text x=${W / 2} y=${H / 2}
       text-anchor="middle" fill="var(--secondary-text-color)" font-size="13">No rate data</text></svg>`;
@@ -68,6 +79,13 @@ export const renderChart = (c: ChartInput): TemplateResult => {
 
   const line = pts.map(([t, v], i) => `${i ? 'L' : 'M'}${x(t).toFixed(1)},${y(v).toFixed(1)}`).join('');
   const area = `${line}L${x(pts[pts.length - 1][0]).toFixed(1)},${y0.toFixed(1)}L${x(pts[0][0]).toFixed(1)},${y0.toFixed(1)}Z`;
+
+  const path = (p: Array<[number, number]>) =>
+    p.map(([t, v], i) => `${i ? 'L' : 'M'}${x(t).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  const fline = fpts.length ? path(fpts) : '';
+  const farea = fpts.length
+    ? `${fline}L${x(fpts[fpts.length - 1][0]).toFixed(1)},${y0.toFixed(1)}L${x(fpts[0][0]).toFixed(1)},${y0.toFixed(1)}Z`
+    : '';
 
   const gid = `g-${c.uid}`;
   const cid = `c-${c.uid}`;
@@ -90,18 +108,37 @@ export const renderChart = (c: ChartInput): TemplateResult => {
   const nowVisible = c.now >= c.start && c.now <= c.end;
   const nowBadge = { x: Math.min(nx - 17, W - PAD.right - badgeWidth('NOW')), w: badgeWidth('NOW') };
 
+  // Badges already placed along the top edge, which later ones keep clear of.
+  const placed: Span[] = nowVisible ? [nowBadge] : [];
   const sessions = c.sessions
     .filter((s) => s.end >= c.start && s.start <= c.end)
     .map((s) => {
       const x1 = x(Math.max(s.start, c.start));
       const x2 = x(Math.min(s.end, c.end));
       const labelW = badgeWidth(c.incentiveLabel);
+      const bx = clearOf(x1 + 4, labelW, nowVisible ? nowBadge : undefined, 0, W - PAD.right - labelW);
+      placed.push({ x: bx, w: labelW });
       return svg`<rect x=${x1} y=${PAD.top} width=${Math.max(x2 - x1, 1)} height=${plotH}
           fill=${c.incentiveColor} opacity=${c.dark ? 0.14 : 0.09}></rect>
         <line x1=${x1} x2=${x1} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${c.incentiveColor}></line>
         <line x1=${x2} x2=${x2} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${c.incentiveColor}></line>
-        ${badge(clearOf(x1 + 4, labelW, nowVisible ? nowBadge : undefined, 0, W - PAD.right - labelW), BADGE_Y, c.incentiveLabel, c.incentiveColor)}`;
+        ${badge(bx, BADGE_Y, c.incentiveLabel, c.incentiveColor)}`;
     });
+
+  const forecastW = badgeWidth(FORECAST_LABEL);
+  const forecastX = clearOfAll(
+    divider === undefined ? 0 : x(divider) + 4,
+    forecastW,
+    placed,
+    0,
+    W - PAD.right - forecastW,
+  );
+  const dividerMarker =
+    divider !== undefined && divider > c.start && divider < c.end
+      ? svg`<line x1=${x(divider)} x2=${x(divider)} y1=${PAD.top - 8} y2=${PAD.top + plotH} class="forecast-divider"
+          stroke="var(--secondary-text-color)" stroke-dasharray="1 3" stroke-linecap="round"></line>
+        ${badge(forecastX, BADGE_Y, FORECAST_LABEL, FORECAST_BADGE)}`
+      : nothing;
 
   const track = c.battery ? batteryTrack(c, c.battery, x, PAD.top + plotH + TRACK_GAP, plotW) : nothing;
 
@@ -120,7 +157,14 @@ export const renderChart = (c: ChartInput): TemplateResult => {
     <g clip-path="url(#${cid})">
       <path d=${area} fill="url(#${gid})" fill-opacity="0.16" stroke="none"></path>
       <path d=${line} fill="none" stroke="url(#${gid})" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"></path>
+      ${
+        fpts.length
+          ? svg`<path class="forecast" d=${farea} fill="url(#${gid})" fill-opacity="0.08" stroke="none"></path>
+      <path class="forecast" d=${fline} fill="none" stroke="url(#${gid})" stroke-opacity="0.75" stroke-width="3" stroke-dasharray="5 5" stroke-linejoin="round"></path>`
+          : nothing
+      }
     </g>
+    ${dividerMarker}
     ${track}
     ${xLabels}
     ${nowMarker}

@@ -37,6 +37,7 @@ incentive_events_entity: event.octopus_energy_<account>_octoplus_power_down_even
 | `incentive_events_attribute` | `joined_events` | Attribute holding the session list. |
 | `incentive_label` | `POWER DOWN` | Label for incentive sessions. |
 | `predbat_prefix` | _(off)_ | Entity prefix of your Predbat install (usually `predbat`). Draws its planned charge and discharge windows, with target %, in a track under the chart. Reads `best_charge_limit` and `best_export_limit`. |
+| `predbat_rates` | `true` | With `predbat_prefix` set, fills the chart after the last published rate (typically tomorrow's, before they are out) with Predbat's predicted rates from `predbat.rates`: a dashed line behind a dotted divider marked `PREDICTED`. `false` turns it off. |
 | `free_label` | `FREE` | Header suffix when the price is 0p or below. |
 | `unit` | `p/kWh` | Unit shown next to prices. |
 | `rate_multiplier` | `100` | Applied to raw values (£ to p). Use `1` if already in pence. |

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { badgeWidth, clearOf, fitLabel } from '../src/layout';
+import { badgeWidth, clearOf, clearOfAll, fitLabel } from '../src/layout';
 
 describe('badgeWidth', () => {
   it('grows with the label length', () => {
@@ -28,6 +28,29 @@ describe('clearOf', () => {
   it('keeps the badge inside the bounds', () => {
     expect(clearOf(-20, 50, undefined, 0, 300)).toBe(0);
     expect(clearOf(400, 50, undefined, 0, 300)).toBe(300);
+  });
+});
+
+describe('clearOfAll', () => {
+  const now = { x: 19, w: 34 };
+  const power = { x: 60, w: 76 };
+
+  it('leaves a badge alone when nothing is in the way', () => {
+    expect(clearOfAll(200, 70, [now, power], 0, 300)).toBe(200);
+    expect(clearOfAll(200, 70, [], 0, 300)).toBe(200);
+  });
+
+  it('clears two badges at once, where moving clear of one at a time would land on the other', () => {
+    // just right of NOW (57) is inside POWER DOWN; the nearest free spot is past POWER DOWN
+    expect(clearOfAll(40, 70, [now, power], 0, 300)).toBe(140);
+  });
+
+  it('goes to the left of the badges when the right side has no room', () => {
+    expect(clearOfAll(210, 70, [{ x: 200, w: 34 }], 0, 230)).toBe(126);
+  });
+
+  it('falls back to the wanted position, clamped, when the row is too crowded', () => {
+    expect(clearOfAll(20, 70, [{ x: 0, w: 90 }], 0, 80)).toBe(20);
   });
 });
 

@@ -25,6 +25,8 @@ export interface EnergyPriceGraphCardConfig {
   rate_multiplier?: number;
   /** Entity prefix of a Predbat install (usually `predbat`). Shows its charge/discharge plan under the chart. */
   predbat_prefix?: string;
+  /** Fill the chart past the end of the real rates with Predbat's predicted rates (default true; needs `predbat_prefix`). */
+  predbat_rates?: boolean;
   /** Chart span in hours (default 24). */
   hours?: number;
   /** Chart height in px (default 190). */
