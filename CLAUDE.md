@@ -57,10 +57,10 @@ For visual changes, check that the PR shows both before and after screenshots (d
 
 ## Releasing
 
-Tag from an up-to-date `main` with CI green, and only when the user asks for a release. Pushing the tag publishes it, so confirm first.
+Release from an up-to-date `main` with CI green, and only when the user asks for a release. Creating the release publishes it, so confirm first.
 
 1. Pick the next version by looking at the latest tag (`git tag --sort=-v:refname | head -1`) and what merged since (`git log <tag>..main --oneline`): patch for fixes, minor for new options or features.
-2. `git tag vX.Y.Z && git push origin vX.Y.Z`.
-3. The release workflow (`.github/workflows/release.yml`) runs `npm version` from the tag, builds, and publishes the GitHub release with generated notes and `energy-price-graph-card.js` attached (what HACS installs). Check the run succeeded and the asset is on the release (`gh release view vX.Y.Z`).
+2. `gh release create vX.Y.Z --target main --generate-notes`. Don't also push the tag by hand.
+3. The release workflow (`.github/workflows/release.yml`) is triggered by the new tag, runs `npm version` from it, builds, and attaches `energy-price-graph-card.js` to the release (what HACS installs). The workflow doesn't write release notes; `--generate-notes` does. Letting both do it duplicated the notes on v0.1.4. Check the run succeeded and the asset is on the release (`gh release view vX.Y.Z`).
 
 The notes are generated from merged PR titles, so write descriptive PR titles. Tags must be `vMAJOR.MINOR.PATCH`.

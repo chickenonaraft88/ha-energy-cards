@@ -58,10 +58,9 @@ npm run screenshot
 The git tag is the version. From an up-to-date `main` (with CI green):
 
 ```sh
-git tag v0.1.4
-git push origin v0.1.4
+gh release create v0.1.4 --target main --generate-notes
 ```
 
-The release workflow sets the package version from the tag, builds, and publishes a GitHub release with generated notes and `energy-price-graph-card.js` attached, which is what HACS installs. No version-bump commit or PR is needed: `package.json` stays at `0.0.0-dev`, and the built card logs the tag's version in the browser console. Tags must look like `vMAJOR.MINOR.PATCH`.
+That creates the tag and the release with generated notes. The tag triggers the release workflow, which sets the package version from it, builds, and attaches `energy-price-graph-card.js` to that release, which is what HACS installs. No version-bump commit or PR is needed: `package.json` stays at `0.0.0-dev`, and the built card logs the tag's version in the browser console. Tags must look like `vMAJOR.MINOR.PATCH`.
 
 `npm run test:e2e` runs the Playwright tests in `e2e/` against the preview page using your installed Chrome (`PW_CHANNEL=msedge` for Edge).
