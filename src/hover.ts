@@ -56,6 +56,6 @@ export const hoverInfo = ({ t, rates, forecast, sessions, battery }: HoverInput)
 export const planText = (plan: NonNullable<HoverInfo['plan']>): string =>
   plan === 'idle' ? 'Idle' : windowSummary(plan);
 
-/** Where the tooltip sits relative to the slot's x, so it stays inside the card near either edge. */
-export const tooltipAlign = (x: number, width: number): 'left' | 'center' | 'right' =>
-  x < width * 0.3 ? 'left' : x > width * 0.7 ? 'right' : 'center';
+/** Left edge for a tooltip of width `tipWidth` centred on `x`, kept inside a card `width` wide (pinned left if it can't fit). */
+export const tooltipLeft = (x: number, tipWidth: number, width: number): number =>
+  Math.max(0, Math.min(x - tipWidth / 2, width - tipWidth));

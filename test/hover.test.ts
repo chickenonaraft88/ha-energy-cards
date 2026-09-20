@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hoverInfo, PAD, planText, timeAtX, tooltipAlign, xAtTime } from '../src/hover';
+import { hoverInfo, PAD, planText, timeAtX, tooltipLeft, xAtTime } from '../src/hover';
 import type { BatteryWindow, Rate } from '../src/types';
 
 const H = 3600000;
@@ -64,10 +64,15 @@ describe('planText', () => {
   });
 });
 
-describe('tooltipAlign', () => {
+describe('tooltipLeft', () => {
+  it('centres on x when there is room', () => {
+    expect(tooltipLeft(200, 100, 400)).toBe(150);
+  });
   it('keeps the tooltip inside the card near either edge', () => {
-    expect(tooltipAlign(20, 400)).toBe('left');
-    expect(tooltipAlign(200, 400)).toBe('center');
-    expect(tooltipAlign(380, 400)).toBe('right');
+    expect(tooltipLeft(20, 100, 400)).toBe(0);
+    expect(tooltipLeft(390, 100, 400)).toBe(300);
+  });
+  it('pins to the left when the tooltip is wider than the card', () => {
+    expect(tooltipLeft(100, 300, 200)).toBe(0);
   });
 });

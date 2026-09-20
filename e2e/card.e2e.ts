@@ -332,6 +332,22 @@ test('the tooltip stays inside the card at either edge', async ({ page }) => {
   }
 });
 
+// Narrow cards with the longest tooltip text: the slot is 29% along, where a fixed alignment rule would overflow.
+test('the tooltip stays inside a very narrow card', async ({ page }) => {
+  await open(page, 'theme=dark&predbat=1&until=23&width=240');
+  const card = await page.locator('energy-price-graph-card ha-card').boundingBox();
+  for (const h of [3.5, 6.5, 12, 20]) {
+    const p = await pointAt(page, h);
+    await page.mouse.move(p.x, p.y);
+    const tip = page.locator('energy-price-graph-card .tooltip');
+    await expect(tip).toBeVisible();
+    await expect.poll(async () => {
+      const b = await tip.boundingBox();
+      return !!(b && card && b.x >= card.x && b.x + b.width <= card.x + card.width);
+    }, `${h}h`).toBe(true);
+  }
+});
+
 test.describe('touch', () => {
   test.use({ hasTouch: true });
 
@@ -348,5 +364,14 @@ test.describe('touch', () => {
     if (!header) throw new Error('no header');
     await page.touchscreen.tap(header.x + 20, header.y + 10);
     await expect(tip).toHaveCount(0);
+  });
+
+  test('a cancelled touch (the page starts scrolling) clears the tooltip', async ({ page }) => {
+    await open(page, 'theme=dark&width=360');
+    const p = await pointAt(page, 0.75);
+    await page.touchscreen.tap(p.x, p.y);
+    await expect(page.locator('energy-price-graph-card .tooltip')).toHaveCount(1);
+    await page.locator('energy-price-graph-card .chart').dispatchEvent('pointercancel', { pointerType: 'touch' });
+    await expect(page.locator('energy-price-graph-card .tooltip')).toHaveCount(0);
   });
 });

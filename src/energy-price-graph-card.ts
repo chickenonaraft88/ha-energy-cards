@@ -16,7 +16,7 @@ import {
   slotOverlapsSession,
 } from './data';
 import { buildConfigForm } from './form';
-import { hoverInfo, planText, timeAtX, tooltipAlign, xAtTime } from './hover';
+import { hoverInfo, planText, timeAtX, tooltipLeft, xAtTime } from './hover';
 import { hasWindowIn, parseBatteryWindows, parseForecastRates, predbatEntityIds } from './predbat';
 import { buildStubConfig } from './stub';
 import type { EnergyPriceGraphCardConfig, HomeAssistant } from './types';
@@ -47,6 +47,7 @@ class EnergyPriceGraphCard extends LitElement {
     _width: { state: true },
     _tick: { state: true },
     _hoverX: { state: true },
+    _tipWidth: { state: true },
   };
 
   hass?: HomeAssistant;
@@ -55,6 +56,8 @@ class EnergyPriceGraphCard extends LitElement {
   _tick = 0;
   /** Pointer x within the chart while hovering or after a tap; undefined when nothing is selected. */
   _hoverX?: number;
+  /** Measured width of the tooltip, so it can be kept inside the card. */
+  _tipWidth = 0;
 
   private _uid = `epgc${++uidCounter}`;
   private _ro?: ResizeObserver;
@@ -116,8 +119,16 @@ class EnergyPriceGraphCard extends LitElement {
     if (e.pointerType === 'mouse') this._hoverX = undefined;
   };
 
+  // The browser cancels the pointer when a touch turns into a page scroll, and no pointerleave follows.
+  private _cancel = (): void => {
+    this._hoverX = undefined;
+  };
+
   protected updated(): void {
     this._observe();
+    const tip = this.renderRoot.querySelector<HTMLElement>('.tooltip');
+    const tipWidth = tip?.getBoundingClientRect().width;
+    if (tipWidth !== undefined && tipWidth !== this._tipWidth) this._tipWidth = tipWidth;
   }
 
   private _observe(): void {
@@ -252,7 +263,8 @@ class EnergyPriceGraphCard extends LitElement {
           <div class="label">${nextLabel}</div>
         </div>
       </div>
-      <div class="chart" @pointerdown=${this._point} @pointermove=${this._point} @pointerleave=${this._leave}>
+      <div class="chart" @pointerdown=${this._point} @pointermove=${this._point} @pointerleave=${this._leave}
+        @pointercancel=${this._cancel}>
         ${
           this._width
             ? renderChart({
@@ -281,9 +293,9 @@ class EnergyPriceGraphCard extends LitElement {
         ${
           hover
             ? html`<div
-                class="tooltip ${tooltipAlign(hoverMid, this._width)}"
+                class="tooltip"
                 role="tooltip"
-                style="left:${hoverMid}px"
+                style="left:${tooltipLeft(hoverMid, this._tipWidth, this._width)}px"
               >
                 <div class="when">${fmtTime(hover.start)}–${fmtTime(hover.end)}</div>
                 <div class="price">${fmt(hover.value)}<span class="uom">${unit}</span></div>
@@ -374,12 +386,6 @@ class EnergyPriceGraphCard extends LitElement {
       line-height: 16px;
       white-space: nowrap;
       pointer-events: none;
-    }
-    .tooltip.center {
-      transform: translateX(-50%);
-    }
-    .tooltip.right {
-      transform: translateX(-100%);
     }
     .tooltip .when {
       color: var(--secondary-text-color);
