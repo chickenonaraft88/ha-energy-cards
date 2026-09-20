@@ -2,6 +2,7 @@ import { nothing, svg, type TemplateResult } from 'lit';
 import { fmtTick, xTicks, yAxis } from './axis';
 import { gradientStops } from './colors';
 import { fmtTime } from './data';
+import { PAD, xAtTime } from './hover';
 import { badgeWidth, clearOf, clearOfAll, fitLabel, type Span } from './layout';
 import { windowLabels, windowTitle } from './predbat';
 import type { BatteryWindow, Rate, Session } from './types';
@@ -28,9 +29,10 @@ export interface ChartInput {
   unit: string;
   /** Price unit size relative to pence, see `priceScale`. */
   priceScale: number;
+  /** The rate slot under the pointer, highlighted on the chart. */
+  hover?: { start: number; end: number; value: number };
 }
 
-const PAD = { left: 36, right: 16, top: 28, bottom: 22 };
 /** Extra height for the battery track under the plot: an 8px gap plus the 14px bar. */
 const TRACK_GAP = 8;
 const TRACK_H = 14;
@@ -75,7 +77,7 @@ export const renderChart = (c: ChartInput): TemplateResult => {
 
   const { yMin, yMax, step, ticks } = yAxis(visible.map((p) => p[1]));
 
-  const x = (t: number) => PAD.left + ((t - c.start) / (c.end - c.start)) * plotW;
+  const x = (t: number) => xAtTime(t, W, c.start, c.end);
   const y = (v: number) => PAD.top + (1 - (v - yMin) / (yMax - yMin)) * plotH;
   const y0 = y(0);
 
@@ -143,6 +145,19 @@ export const renderChart = (c: ChartInput): TemplateResult => {
         ${badge(forecastX, BADGE_Y, FORECAST_LABEL, FORECAST_BADGE)}`
       : nothing;
 
+  // A band over the hovered slot, and a dot on the line at its middle (the middle of the visible part, for a slot cut off by the edge).
+  const hv = c.hover;
+  const hx1 = hv ? x(Math.max(hv.start, c.start)) : 0;
+  const hx2 = hv ? x(Math.min(hv.end, c.end)) : 0;
+  const hoverBand = hv
+    ? svg`<rect class="hover-band" x=${hx1} y=${PAD.top} width=${Math.max(hx2 - hx1, 1)} height=${plotH}
+        fill="var(--primary-text-color)" opacity="0.1"></rect>`
+    : nothing;
+  const hoverDot = hv
+    ? svg`<circle class="hover-dot" cx=${(hx1 + hx2) / 2} cy=${y(hv.value)} r="4.5"
+        fill="var(--card-background-color, #fff)" stroke="var(--primary-text-color)" stroke-width="2"></circle>`
+    : nothing;
+
   const track = c.battery ? batteryTrack(c, c.battery, x, PAD.top + plotH + TRACK_GAP, plotW) : nothing;
 
   const nowMarker = nowVisible
@@ -157,6 +172,7 @@ export const renderChart = (c: ChartInput): TemplateResult => {
     </defs>
     ${grid}
     ${sessions}
+    ${hoverBand}
     <g clip-path="url(#${cid})">
       <path d=${area} fill="url(#${gid})" fill-opacity="0.16" stroke="none"></path>
       <path class="price-line" d=${line} fill="none" stroke="url(#${gid})" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"></path>
@@ -168,6 +184,7 @@ export const renderChart = (c: ChartInput): TemplateResult => {
           : nothing
       }
     </g>
+    ${hoverDot}
     ${dividerMarker}
     ${track}
     ${xLabels}

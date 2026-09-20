@@ -8,6 +8,7 @@ import {
   parseResults,
   predbatEntityIds,
   windowLabels,
+  windowSummary,
   windowTitle,
 } from '../src/predbat';
 
@@ -223,5 +224,12 @@ describe('parseForecastRates', () => {
     expect(parseForecastRates(rates, 1, t(21, 12))).toEqual([]);
     expect(parseForecastRates(undefined, 1, t(20, 23))).toEqual([]);
     expect(parseForecastRates({ state: 'x', attributes: {} }, 1, t(20, 23))).toEqual([]);
+  });
+});
+
+describe('windowSummary', () => {
+  it('says what the window does', () => {
+    expect(windowSummary({ start: 0, end: 1, kind: 'charge', target: 100 })).toBe('Charge to 100%');
+    expect(windowSummary({ start: 0, end: 1, kind: 'discharge', target: 20 })).toBe('Discharge to 20%');
   });
 });

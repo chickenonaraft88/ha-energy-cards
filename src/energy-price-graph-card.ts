@@ -16,6 +16,7 @@ import {
   slotOverlapsSession,
 } from './data';
 import { buildConfigForm } from './form';
+import { hoverInfo, planText, timeAtX, tooltipLeft, xAtTime } from './hover';
 import { hasWindowIn, parseBatteryWindows, parseForecastRates, predbatEntityIds } from './predbat';
 import { buildStubConfig } from './stub';
 import type { EnergyPriceGraphCardConfig, HomeAssistant } from './types';
@@ -45,12 +46,18 @@ class EnergyPriceGraphCard extends LitElement {
     _config: { state: true },
     _width: { state: true },
     _tick: { state: true },
+    _hoverX: { state: true },
+    _tipWidth: { state: true },
   };
 
   hass?: HomeAssistant;
   _config?: EnergyPriceGraphCardConfig;
   _width = 0;
   _tick = 0;
+  /** Pointer x within the chart while hovering or after a tap; undefined when nothing is selected. */
+  _hoverX?: number;
+  /** Measured width of the tooltip, so it can be kept inside the card. */
+  _tipWidth = 0;
 
   private _uid = `epgc${++uidCounter}`;
   private _ro?: ResizeObserver;
@@ -85,20 +92,43 @@ class EnergyPriceGraphCard extends LitElement {
     super.connectedCallback();
     // Re-render every minute so the NOW marker and labels keep moving.
     this._timer = window.setInterval(() => this._tick++, 60000);
+    window.addEventListener('pointerdown', this._outside);
     // disconnectedCallback dropped the observer; a card that was only moved isn't necessarily re-rendered.
     if (this.hasUpdated) this._observe();
   }
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
+    window.removeEventListener('pointerdown', this._outside);
     window.clearInterval(this._timer);
     this._ro?.disconnect();
     this._ro = undefined;
     this._observed = undefined;
   }
 
+  // A tap elsewhere dismisses the tooltip; a mouse dismisses it by leaving the chart.
+  private _outside = (e: Event): void => {
+    if (this._hoverX !== undefined && !e.composedPath().includes(this._observed as Element)) this._hoverX = undefined;
+  };
+
+  private _point = (e: PointerEvent): void => {
+    this._hoverX = e.clientX - (e.currentTarget as Element).getBoundingClientRect().left;
+  };
+
+  private _leave = (e: PointerEvent): void => {
+    if (e.pointerType === 'mouse') this._hoverX = undefined;
+  };
+
+  // The browser cancels the pointer when a touch turns into a page scroll, and no pointerleave follows.
+  private _cancel = (): void => {
+    this._hoverX = undefined;
+  };
+
   protected updated(): void {
     this._observe();
+    const tip = this.renderRoot.querySelector<HTMLElement>('.tooltip');
+    const tipWidth = tip?.getBoundingClientRect().width;
+    if (tipWidth !== undefined && tipWidth !== this._tipWidth) this._tipWidth = tipWidth;
   }
 
   private _observe(): void {
@@ -209,6 +239,19 @@ class EnergyPriceGraphCard extends LitElement {
 
     const fmt = (v: number | undefined) => (v === undefined ? '—' : v.toFixed(2));
 
+    const end = start.getTime() + spanHours * HOUR;
+    const hoverT = this._hoverX === undefined ? undefined : timeAtX(this._hoverX, this._width, start.getTime(), end);
+    const hover = hoverT === undefined ? undefined : hoverInfo({ t: hoverT, rates, forecast, sessions, battery });
+    // The tooltip is centred on the slot's visible part, so it doesn't jump around as the pointer moves within it.
+    const hoverMid = hover
+      ? xAtTime(
+          (Math.max(hover.start, start.getTime()) + Math.min(hover.end, end)) / 2,
+          this._width,
+          start.getTime(),
+          end,
+        )
+      : 0;
+
     return html`<ha-card>
       <div class="header">
         <div class="stat">
@@ -220,7 +263,8 @@ class EnergyPriceGraphCard extends LitElement {
           <div class="label">${nextLabel}</div>
         </div>
       </div>
-      <div class="chart">
+      <div class="chart" @pointerdown=${this._point} @pointermove=${this._point} @pointerleave=${this._leave}
+        @pointercancel=${this._cancel}>
         ${
           this._width
             ? renderChart({
@@ -242,7 +286,23 @@ class EnergyPriceGraphCard extends LitElement {
                 incentiveLabel,
                 unit,
                 priceScale: scale,
+                hover,
               })
+            : nothing
+        }
+        ${
+          hover
+            ? html`<div
+                class="tooltip"
+                role="tooltip"
+                style="left:${tooltipLeft(hoverMid, this._tipWidth, this._width)}px"
+              >
+                <div class="when">${fmtTime(hover.start)}–${fmtTime(hover.end)}</div>
+                <div class="price">${fmt(hover.value)}<span class="uom">${unit}</span></div>
+                ${hover.predicted ? html`<div class="note">Predicted by Predbat</div>` : nothing}
+                ${hover.incentive ? html`<div class="note">${incentiveLabel}</div>` : nothing}
+                ${hover.plan ? html`<div class="note">Predbat: ${planText(hover.plan)}</div>` : nothing}
+              </div>`
             : nothing
         }
       </div>
@@ -306,8 +366,41 @@ class EnergyPriceGraphCard extends LitElement {
       opacity: 0.82;
     }
     .chart {
+      position: relative;
       margin-top: 4px;
       line-height: 0;
+      /* Vertical drags still scroll the page; horizontal ones move the tooltip. */
+      touch-action: pan-y;
+    }
+    .tooltip {
+      position: absolute;
+      top: 24px;
+      z-index: 1;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: var(--card-background-color, #fff);
+      border: 1px solid var(--divider-color, rgba(120, 120, 128, 0.4));
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      color: var(--primary-text-color);
+      font-size: 12px;
+      line-height: 16px;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .tooltip .when {
+      color: var(--secondary-text-color);
+    }
+    .tooltip .price {
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 20px;
+      font-variant-numeric: tabular-nums;
+    }
+    .tooltip .uom {
+      font-size: 11px;
+    }
+    .tooltip .note {
+      color: var(--secondary-text-color);
     }
     .legend {
       display: flex;
