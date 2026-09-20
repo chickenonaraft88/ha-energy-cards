@@ -2,7 +2,7 @@ import { nothing, svg, type TemplateResult } from 'lit';
 import { fmtTick, xTicks, yAxis } from './axis';
 import { gradientStops, type PriceBands } from './colors';
 import { fmtTime } from './data';
-import { PAD, xAtTime } from './hover';
+import { chartSummary, PAD, xAtTime } from './hover';
 import { badgeWidth, clearOf, clearOfAll, fitLabel, type Span } from './layout';
 import { windowLabels, windowTitle } from './predbat';
 import type { BatteryWindow, Rate, Session } from './types';
@@ -33,6 +33,10 @@ export interface ChartInput {
   bands?: PriceBands;
   /** The rate slot under the pointer, highlighted on the chart. */
   hover?: { start: number; end: number; value: number };
+  /** Called when a rate slot gains or loses keyboard focus, with the slot's midpoint x (undefined on blur). */
+  onPointFocus?: (mid: number | undefined) => void;
+  /** Id of the tooltip element the focused slot describes, for `aria-describedby`. */
+  tipId?: string;
 }
 
 /** Extra height for the battery track under the plot: an 8px gap plus the 14px bar. */
@@ -51,6 +55,15 @@ const badge = (x: number, y: number, text: string, color: string) => {
   const w = badgeWidth(text);
   return svg`<rect x=${x} y=${y} width=${w} height="16" rx="3" fill=${color}></rect>
     <text x=${x + w / 2} y=${y + 11.5} text-anchor="middle" fill="#fff" font-size="10" font-weight="600">${text}</text>`;
+};
+
+/** Arrow-key roving between hover points, so the tooltip is reachable without tabbing through every slot. */
+const onPointKey = (e: KeyboardEvent): void => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  e.preventDefault();
+  const el = e.currentTarget as SVGElement;
+  const sib = (e.key === 'ArrowRight' ? el.nextElementSibling : el.previousElementSibling) as SVGElement | null;
+  sib?.focus();
 };
 
 export const renderChart = (c: ChartInput): TemplateResult => {
@@ -167,7 +180,31 @@ export const renderChart = (c: ChartInput): TemplateResult => {
         ${badge(nowBadge.x, BADGE_Y, 'NOW', c.nowColor)}`
     : nothing;
 
-  return svg`<svg width=${W} height=${H} viewBox="0 0 ${W} ${H}" role="img" aria-label="Energy price graph">
+  // One invisible, focusable target per rate slot (real, then any forecast slot past the real rates), so the
+  // tooltip that pointer hover shows is also reachable with Tab/arrow keys; aria-describedby ties it to that tooltip.
+  // Only one slot is a tab stop at a time (roving tabindex): the hovered/focused one, or else the one at "now" -
+  // Tab reaches the chart in one stop, and ArrowLeft/ArrowRight then move between slots.
+  const slots = [
+    ...c.rates,
+    ...(c.forecast ?? []).filter((r) => r.start >= (last?.end ?? Number.NEGATIVE_INFINITY)),
+  ].filter((r) => r.end > c.start && r.start < c.end);
+  const hoverIdx = c.hover ? slots.findIndex((r) => r.start === c.hover?.start && r.end === c.hover?.end) : -1;
+  const nowIdx = slots.findIndex((r) => c.now >= r.start && c.now < r.end);
+  const focusIdx = hoverIdx >= 0 ? hoverIdx : Math.max(nowIdx, 0);
+  const points = svg`<g class="points">${slots.map((r, i) => {
+    const x1 = x(Math.max(r.start, c.start));
+    const x2 = x(Math.min(r.end, c.end));
+    const mid = (x1 + x2) / 2;
+    return svg`<rect x=${x1} y=${PAD.top} width=${Math.max(x2 - x1, 1)} height=${plotH} fill="transparent"
+        tabindex=${i === focusIdx ? 0 : -1} role="img" aria-label=${`${fmtTime(r.start)}–${fmtTime(r.end)}`}
+        aria-describedby=${c.tipId ?? nothing}
+        @focus=${() => c.onPointFocus?.(mid)} @blur=${() => c.onPointFocus?.(undefined)} @keydown=${onPointKey}
+      ></rect>`;
+  })}</g>`;
+
+  const summary = chartSummary([...c.rates, ...(c.forecast ?? [])], c.now, c.start, c.end, c.unit);
+
+  return svg`<svg width=${W} height=${H} viewBox="0 0 ${W} ${H}" role="group" aria-label=${summary}>
     <defs>
       <linearGradient id=${gid} gradientUnits="userSpaceOnUse" x1="0" x2="0" y1=${y(yMax)} y2=${y(yMin)}>${stops}</linearGradient>
       <clipPath id=${cid}><rect x=${PAD.left} y=${PAD.top - 8} width=${plotW} height=${plotH + 16}></rect></clipPath>
@@ -191,6 +228,7 @@ export const renderChart = (c: ChartInput): TemplateResult => {
     ${track}
     ${xLabels}
     ${nowMarker}
+    ${points}
   </svg>`;
 };
 

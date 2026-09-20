@@ -348,6 +348,38 @@ test('the tooltip stays inside a very narrow card', async ({ page }) => {
   }
 });
 
+test.describe('keyboard accessibility', () => {
+  test('the chart has an aria-label summarising the current price and the cheapest slot', async ({ page }) => {
+    await open(page, 'theme=dark');
+    const svg = page.locator('energy-price-graph-card svg').first();
+    await expect(svg).toHaveAttribute('role', 'group');
+    const label = await svg.getAttribute('aria-label');
+    expect(label).toContain('current price');
+    expect(label).toContain('cheapest');
+  });
+
+  test('tabbing into the chart focuses one hover point and shows its tooltip', async ({ page }) => {
+    await open(page, 'theme=dark');
+    const tip = page.locator('energy-price-graph-card .tooltip');
+    await expect(tip).toHaveCount(0);
+    // Roving tabindex: only one slot is a tab stop at a time.
+    const points = page.locator('energy-price-graph-card svg g.points rect');
+    expect(await points.count()).toBeGreaterThan(1);
+    await expect(page.locator('energy-price-graph-card svg g.points rect[tabindex="0"]')).toHaveCount(1);
+    await page.keyboard.press('Tab');
+    await expect(tip).toBeVisible();
+  });
+
+  test('arrow keys move focus between hover points and update the tooltip', async ({ page }) => {
+    await open(page, 'theme=dark');
+    const tip = page.locator('energy-price-graph-card .tooltip');
+    await page.keyboard.press('Tab');
+    const firstText = await tip.textContent();
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(() => tip.textContent()).not.toBe(firstText);
+  });
+});
+
 test.describe('touch', () => {
   test.use({ hasTouch: true });
 

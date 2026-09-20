@@ -289,12 +289,17 @@ class EnergyPriceGraphCard extends LitElement {
                 priceScale: scale,
                 bands,
                 hover,
+                onPointFocus: (mid) => {
+                  this._hoverX = mid;
+                },
+                tipId: `${this._uid}-tip`,
               })
             : nothing
         }
         ${
           hover
             ? html`<div
+                id="${this._uid}-tip"
                 class="tooltip"
                 role="tooltip"
                 style="left:${tooltipLeft(hoverMid, this._tipWidth, this._width)}px"

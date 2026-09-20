@@ -1,4 +1,4 @@
-import { rateAt, sessionActive } from './data';
+import { fmtTime, rateAt, sessionActive } from './data';
 import { windowSummary } from './predbat';
 import type { BatteryWindow, Rate, Session } from './types';
 
@@ -50,6 +50,20 @@ export const hoverInfo = ({ t, rates, forecast, sessions, battery }: HoverInput)
     incentive: sessionActive(sessions, t),
     plan: battery ? (battery.find((w) => t >= w.start && t < w.end) ?? 'idle') : undefined,
   };
+};
+
+/** Screen-reader summary of the chart: current price and the cheapest slot in view, for the SVG's `aria-label`. */
+export const chartSummary = (rates: Rate[], now: number, start: number, end: number, unit: string): string => {
+  const current = rateAt(rates, now);
+  const visible = rates.filter((r) => r.end > start && r.start < end);
+  const cheapest = visible.reduce<Rate | undefined>((min, r) => (!min || r.value < min.value ? r : min), undefined);
+  const parts = ['Energy price graph'];
+  if (current) parts.push(`current price ${current.value.toFixed(2)} ${unit}`);
+  if (cheapest) {
+    const range = `${fmtTime(cheapest.start)}–${fmtTime(cheapest.end)}`;
+    parts.push(`cheapest ${range} at ${cheapest.value.toFixed(2)} ${unit}`);
+  }
+  return parts.join(', ');
 };
 
 /** The plan line of the tooltip, e.g. `Charge to 100%` or `Idle`. */

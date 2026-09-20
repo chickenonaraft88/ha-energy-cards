@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hoverInfo, PAD, planText, timeAtX, tooltipLeft, xAtTime } from '../src/hover';
+import { chartSummary, hoverInfo, PAD, planText, timeAtX, tooltipLeft, xAtTime } from '../src/hover';
 import type { BatteryWindow, Rate } from '../src/types';
 
 const H = 3600000;
@@ -9,6 +9,9 @@ const rates: Rate[] = [
 ];
 const forecast: Rate[] = [{ start: 2 * H, end: 3 * H, value: 30 }];
 const base = { rates, forecast, sessions: [] };
+
+// fmtTime formats in local time, so build times the same way it does rather than hard-coding an offset from epoch.
+const at = (h: number, m = 0) => new Date(2026, 0, 15, h, m).getTime();
 
 describe('timeAtX / xAtTime', () => {
   const W = 236; // plot is 184px wide
@@ -61,6 +64,36 @@ describe('planText', () => {
   it('describes windows and idle', () => {
     expect(planText('idle')).toBe('Idle');
     expect(planText({ start: 0, end: 1, kind: 'discharge', target: 20 })).toBe('Discharge to 20%');
+  });
+});
+
+describe('chartSummary', () => {
+  const day: Rate[] = [
+    { start: at(0), end: at(1), value: 20 },
+    { start: at(1), end: at(2), value: 10 },
+    { start: at(2), end: at(3), value: 30 },
+  ];
+
+  it('reports the current price and the cheapest slot in view', () => {
+    expect(chartSummary(day, at(0, 30), at(0), at(3), 'p/kWh')).toBe(
+      'Energy price graph, current price 20.00 p/kWh, cheapest 01:00–02:00 at 10.00 p/kWh',
+    );
+  });
+
+  it('only considers slots inside the visible range for "cheapest"', () => {
+    expect(chartSummary(day, at(0, 30), at(0), at(1), 'p/kWh')).toBe(
+      'Energy price graph, current price 20.00 p/kWh, cheapest 00:00–01:00 at 20.00 p/kWh',
+    );
+  });
+
+  it('omits the current price when nothing covers "now"', () => {
+    expect(chartSummary(day, at(5), at(0), at(3), 'p/kWh')).toBe(
+      'Energy price graph, cheapest 01:00–02:00 at 10.00 p/kWh',
+    );
+  });
+
+  it('falls back to a bare label with no rates', () => {
+    expect(chartSummary([], at(0), at(0), at(3), 'p/kWh')).toBe('Energy price graph');
   });
 });
 
