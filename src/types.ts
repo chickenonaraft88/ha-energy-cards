@@ -23,6 +23,8 @@ export interface EnergyPriceGraphCardConfig {
   unit?: string;
   /** Multiplier applied to raw values to reach display units (default 100: £ -> p). */
   rate_multiplier?: number;
+  /** Entity prefix of a Predbat install (usually `predbat`). Shows its charge/discharge plan under the chart. */
+  predbat_prefix?: string;
   /** Chart span in hours (default 24). */
   hours?: number;
   /** Chart height in px (default 190). */
@@ -38,4 +40,12 @@ export interface Rate {
 export interface Session {
   start: number;
   end: number;
+}
+
+/** A planned forced battery charge or discharge, from Predbat. `target` is the SoC percentage aimed for. */
+export interface BatteryWindow {
+  start: number;
+  end: number;
+  kind: 'charge' | 'discharge';
+  target: number;
 }
