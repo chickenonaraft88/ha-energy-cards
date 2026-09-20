@@ -21,7 +21,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-      issues: read
+      issues: write # Required to assign the issue to claude[bot] below
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
     steps:
@@ -70,4 +70,16 @@ jobs:
           # per CLAUDE.md instead of skipping verification.
           claude_args: >-
             --allowedTools "Bash(npm ci),Bash(npm run typecheck),Bash(npm run lint),Bash(npm run lint:fix),Bash(npm test),Bash(npm run build),Bash(npm run size),Bash(npm run test:e2e),Bash(npm run screenshot),Bash(npm run screenshot *)"
+
+      - name: Assign the issue to claude[bot]
+        # Runs after Claude Code, not before: GitHub only accepts claude[bot]
+        # as an assignee once it's already a participant on the issue (has
+        # commented), and the step above is what makes that happen on a
+        # fresh issue. Assigning any earlier reliably 422s ("invalid
+        # assignee"). Non-blocking either way - this is cosmetic, the
+        # label_trigger above already did the real work.
+        if: github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == 'claude'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh issue edit "${{ github.event.issue.number }}" --repo "${{ github.repository }}" --add-assignee 'claude[bot]' || true
 
