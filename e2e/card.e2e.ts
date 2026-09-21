@@ -430,20 +430,38 @@ test.describe('keyboard accessibility', () => {
   });
 });
 
-test('shows no cheapest-window band unless configured', async ({ page }) => {
+test('shows no cheapest-window badge unless configured', async ({ page }) => {
   await open(page, 'theme=dark');
-  await expect(page.locator('energy-price-graph-card svg line[stroke-dasharray="2 2"]')).toHaveCount(0);
+  await expect(page.locator('energy-price-graph-card svg')).not.toContainText('CHEAPEST');
   await expect(page.locator('energy-price-graph-card .legend')).toHaveCount(0);
 });
 
 test('shades the cheapest window with a badge, like NOW and POWER DOWN', async ({ page }) => {
   const errors = await open(page, 'theme=dark&cfg={"cheapest_window_hours":3}');
   await expect(page.locator('energy-price-graph-card svg')).toContainText('CHEAPEST 3H');
-  await expect(page.locator('energy-price-graph-card svg line[stroke-dasharray="2 2"]')).toHaveCount(2);
   // No legend entry: the badge on the chart already labels it, same as NOW and POWER DOWN.
   await expect(page.locator('energy-price-graph-card .legend')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
+
+for (const width of [360, 560]) {
+  test(`CHEAPEST badge stays clear of NOW and POWER DOWN at ${width}px`, async ({ page }) => {
+    await open(page, `theme=dark&width=${width}&cfg={"cheapest_window_hours":3}`);
+    const boxes = await page.evaluate(() => {
+      const texts = [...(document.querySelector('energy-price-graph-card')?.shadowRoot?.querySelectorAll('svg text') ?? [])];
+      const box = (label: string) => {
+        const r = texts.find((t) => t.textContent === label)?.previousElementSibling?.getBoundingClientRect();
+        return r ? { left: r.left, right: r.right } : undefined;
+      };
+      return { now: box('NOW'), power: box('POWER DOWN'), cheapest: box('CHEAPEST 3H') };
+    });
+    for (const other of [boxes.now, boxes.power]) {
+      expect(other).toBeDefined();
+      const clear = (boxes.cheapest?.left ?? 0) >= (other?.right ?? Infinity) || (boxes.cheapest?.right ?? Infinity) <= (other?.left ?? 0);
+      expect(clear, JSON.stringify(boxes)).toBe(true);
+    }
+  });
+}
 
 test.describe('touch', () => {
   test.use({ hasTouch: true });

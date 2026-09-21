@@ -137,21 +137,19 @@ export const renderChart = (c: ChartInput): TemplateResult => {
     });
 
   const cw = c.cheapestWindow;
-  const cheapestBand =
-    cw && cw.end > c.start && cw.start < c.end
-      ? (() => {
-          const cx1 = x(Math.max(cw.start, c.start));
-          const cx2 = x(Math.min(cw.end, c.end));
-          const labelW = badgeWidth(c.cheapestLabel);
-          const bx = clearOfAll(cx1 + 4, labelW, placed, 0, W - PAD.right - labelW);
-          placed.push({ x: bx, w: labelW });
-          return svg`<rect x=${cx1} y=${PAD.top} width=${Math.max(cx2 - cx1, 1)} height=${plotH}
-              fill=${c.cheapestColor} opacity=${c.dark ? 0.16 : 0.1}></rect>
-            <line x1=${cx1} x2=${cx1} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${c.cheapestColor} stroke-dasharray="2 2"></line>
-            <line x1=${cx2} x2=${cx2} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${c.cheapestColor} stroke-dasharray="2 2"></line>
-            ${badge(bx, BADGE_Y, c.cheapestLabel, c.cheapestColor)}`;
-        })()
-      : nothing;
+  let cheapestBand: TemplateResult | typeof nothing = nothing;
+  if (cw && cw.end > c.start && cw.start < c.end) {
+    const cx1 = x(Math.max(cw.start, c.start));
+    const cx2 = x(Math.min(cw.end, c.end));
+    const labelW = badgeWidth(c.cheapestLabel);
+    const bx = clearOfAll(cx1 + 4, labelW, placed, 0, W - PAD.right - labelW);
+    placed.push({ x: bx, w: labelW });
+    cheapestBand = svg`<rect x=${cx1} y=${PAD.top} width=${Math.max(cx2 - cx1, 1)} height=${plotH}
+        fill=${c.cheapestColor} opacity=${c.dark ? 0.14 : 0.09}></rect>
+      <line x1=${cx1} x2=${cx1} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${c.cheapestColor}></line>
+      <line x1=${cx2} x2=${cx2} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${c.cheapestColor}></line>
+      ${badge(bx, BADGE_Y, c.cheapestLabel, c.cheapestColor)}`;
+  }
 
   const forecastW = badgeWidth(FORECAST_LABEL);
   const forecastX = clearOfAll(

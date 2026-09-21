@@ -104,7 +104,6 @@ export const clampWindowHours = (hours: unknown): number | undefined => {
 export interface CheapestWindow {
   start: number;
   end: number;
-  average: number;
 }
 
 /**
@@ -113,10 +112,10 @@ export interface CheapestWindow {
  */
 export const cheapestWindow = (rates: Rate[], hours: number): CheapestWindow | undefined => {
   const slots = Math.round(hours * 2);
-  if (slots <= 0 || rates.length < slots) return undefined;
+  if (slots <= 0) return undefined;
 
   let best: CheapestWindow | undefined;
-  let bestSum = Number.POSITIVE_INFINITY;
+  let bestSum = Infinity;
   let sum = 0;
   let runLen = 0;
 
@@ -133,7 +132,7 @@ export const cheapestWindow = (rates: Rate[], hours: number): CheapestWindow | u
     }
     if (runLen === slots && sum < bestSum) {
       bestSum = sum;
-      best = { start: rates[i - slots + 1].start, end: rates[i].end, average: sum / slots };
+      best = { start: rates[i - slots + 1].start, end: rates[i].end };
     }
   }
   return best;
