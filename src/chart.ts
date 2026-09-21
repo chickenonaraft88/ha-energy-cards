@@ -145,7 +145,9 @@ export const renderChart = (c: ChartInput): TemplateResult => {
     const bx = clearOfAll(cx1 + 4, labelW, placed, 0, W - PAD.right - labelW);
     placed.push({ x: bx, w: labelW });
     cheapestBand = svg`<rect x=${cx1} y=${PAD.top} width=${Math.max(cx2 - cx1, 1)} height=${plotH}
-        fill=${c.cheapestColor} opacity=${c.dark ? 0.16 : 0.1}></rect>
+        fill=${c.cheapestColor} opacity=${c.dark ? 0.14 : 0.09}></rect>
+      <line x1=${cx1} x2=${cx1} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${c.cheapestColor}></line>
+      <line x1=${cx2} x2=${cx2} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${c.cheapestColor}></line>
       ${badge(bx, BADGE_Y, c.cheapestLabel, c.cheapestColor)}`;
   }
 
