@@ -33,6 +33,7 @@ const HELPERS: Record<string, string> = {
   predbat_rates: "Fills the chart after the last published rate with Predbat's predictions, marked with a dotted line.",
   cheap_below: 'Optional. In the card unit. Rates below this are green; set with or without Expensive above.',
   expensive_above: 'Optional. In the card unit. Rates at or above this are red; those in between are amber.',
+  cheapest_window_hours: 'Optional. Shades the cheapest contiguous run of this many hours in the visible rates.',
   rate_multiplier: 'Applied to raw values. 100 converts £ to p.',
 };
 
