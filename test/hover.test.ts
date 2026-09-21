@@ -33,6 +33,7 @@ describe('hoverInfo', () => {
       value: 20,
       predicted: false,
       incentive: false,
+      powerUp: false,
       plan: undefined,
     });
   });
@@ -47,6 +48,12 @@ describe('hoverInfo', () => {
     const sessions = [{ start: 0, end: H }];
     expect(hoverInfo({ ...base, sessions, t: 5 })?.incentive).toBe(true);
     expect(hoverInfo({ ...base, sessions, t: H + 5 })?.incentive).toBe(false);
+  });
+  it('flags an active power-up session, independently of incentive sessions', () => {
+    const powerUpSessions = [{ start: 0, end: H }];
+    expect(hoverInfo({ ...base, powerUpSessions, t: 5 })?.powerUp).toBe(true);
+    expect(hoverInfo({ ...base, powerUpSessions, t: H + 5 })?.powerUp).toBe(false);
+    expect(hoverInfo({ ...base, t: 5 })?.powerUp).toBe(false);
   });
   it('reports the plan window, idle between windows, and nothing without Predbat', () => {
     const w: BatteryWindow = { start: 0, end: H, kind: 'charge', target: 100 };

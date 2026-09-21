@@ -34,6 +34,26 @@ test('omits power down when there are no sessions', async ({ page }) => {
   await expect(page.locator('energy-price-graph-card')).not.toContainText('POWER DOWN');
 });
 
+// The preview's power-up session starts right when the power-down one ends (18:30), so at 18:00 the next
+// slot (18:30) is in the power-up session, not the power-down one.
+test('shows an upcoming power up session', async ({ page }) => {
+  const errors = await open(page, 'theme=dark&powerup=1&time=18:00');
+  const labels = page.locator('energy-price-graph-card .label');
+  await expect(labels.nth(1)).toHaveText('NEXT · 18:30 · POWER UP');
+  await expect(page.locator('energy-price-graph-card svg')).toContainText('POWER UP');
+  expect(errors).toEqual([]);
+});
+
+test('omits power up when the entity is not configured', async ({ page }) => {
+  await open(page, 'theme=dark');
+  await expect(page.locator('energy-price-graph-card')).not.toContainText('POWER UP');
+});
+
+test('omits power up when there are no sessions', async ({ page }) => {
+  await open(page, 'theme=dark&powerup=1&scenario=nosession');
+  await expect(page.locator('energy-price-graph-card')).not.toContainText('POWER UP');
+});
+
 test('labels a negative price as FREE', async ({ page }) => {
   await open(page, 'theme=dark&time=03:10');
   await expect(page.locator('energy-price-graph-card .label').first()).toHaveText('NOW · 03:00 · FREE');
@@ -110,6 +130,32 @@ for (const width of [360, 560]) {
     expect(session?.top, 'badges sit at the same height').toBe(now?.top);
     const apart = now && session && (now.right <= session.left || session.right <= now.left || now.bottom <= session.top || session.bottom <= now.top);
     expect(apart, JSON.stringify(boxes)).toBe(true);
+  });
+}
+
+// At 17:10 the power-down session (17:30-18:30) and power-up session (18:30-19:30) are both upcoming, so
+// NOW, POWER DOWN and POWER UP badges all sit along the same edge.
+for (const width of [360, 560]) {
+  test(`NOW, POWER DOWN and POWER UP badges do not overlap at ${width}px`, async ({ page }) => {
+    await open(page, `theme=dark&powerup=1&width=${width}`);
+    const boxes = await page.evaluate(() => {
+      const svg = document.querySelector('energy-price-graph-card')?.shadowRoot?.querySelector('svg');
+      const rectOf = (label: string) =>
+        [...(svg?.querySelectorAll('text') ?? [])]
+          .find((t) => t.textContent === label)
+          ?.previousElementSibling?.getBoundingClientRect();
+      const pick = (r?: DOMRect) => r && { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+      return { now: pick(rectOf('NOW')), down: pick(rectOf('POWER DOWN')), up: pick(rectOf('POWER UP')) };
+    });
+    const { now, down, up } = boxes;
+    expect(now).toBeTruthy();
+    expect(down).toBeTruthy();
+    expect(up).toBeTruthy();
+    const apart = (a?: typeof now, b?: typeof now) =>
+      !!a && !!b && (a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
+    expect(apart(now, down), JSON.stringify(boxes)).toBe(true);
+    expect(apart(now, up), JSON.stringify(boxes)).toBe(true);
+    expect(apart(down, up), JSON.stringify(boxes)).toBe(true);
   });
 }
 
@@ -331,6 +377,17 @@ test('hovering the chart shows the slot time, price and incentive', async ({ pag
   await expect(page.locator('energy-price-graph-card .hover-band')).toHaveCount(1);
   await page.mouse.move(0, 0);
   await expect(tip).toHaveCount(0);
+});
+
+// The preview's power-up session runs 18:30-19:30; 1.75h past the 17:00 start lands at 18:45, inside it.
+test('hovering the chart during a power up session shows its label', async ({ page }) => {
+  await open(page, 'theme=dark&powerup=1');
+  const tip = page.locator('energy-price-graph-card .tooltip');
+  const p = await pointAt(page, 1.75);
+  await page.mouse.move(p.x, p.y);
+  await expect(tip).toContainText('18:30–19:00');
+  await expect(tip).toContainText('POWER UP');
+  await expect(tip).not.toContainText('POWER DOWN');
 });
 
 test('the tooltip shows the Predbat plan and marks predicted prices', async ({ page }) => {

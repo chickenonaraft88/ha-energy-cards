@@ -19,6 +19,12 @@ export interface EnergyPriceGraphCardConfig {
   incentive_events_attribute?: string;
   /** Label shown for an active/upcoming incentive session. */
   incentive_label?: string;
+  /** Entity with a list of Octoplus Power Up (encouraged-usage) events, shaded separately from incentive_events_entity. */
+  power_up_events_entity?: string;
+  /** Attribute on the power-up entity holding the list of events. */
+  power_up_events_attribute?: string;
+  /** Label shown for an active/upcoming power-up session. */
+  power_up_label?: string;
   free_label?: string;
   unit?: string;
   /** Multiplier applied to raw values to reach display units (default 100: £ -> p). */

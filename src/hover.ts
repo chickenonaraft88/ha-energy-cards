@@ -22,6 +22,8 @@ export interface HoverInput {
   rates: Rate[];
   forecast: Rate[];
   sessions: Session[];
+  /** Octoplus Power Up sessions; empty when not configured. */
+  powerUpSessions?: Session[];
   /** Undefined when Predbat isn't configured. */
   battery?: BatteryWindow[];
 }
@@ -33,12 +35,20 @@ export interface HoverInfo {
   /** The price comes from Predbat's forecast rather than the real rates. */
   predicted: boolean;
   incentive: boolean;
+  powerUp: boolean;
   /** The Predbat plan at this time (undefined when Predbat isn't configured): its window, or 'idle' between them. */
   plan?: BatteryWindow | 'idle';
 }
 
 /** What the tooltip shows for time `t`, or undefined when no rate covers it. */
-export const hoverInfo = ({ t, rates, forecast, sessions, battery }: HoverInput): HoverInfo | undefined => {
+export const hoverInfo = ({
+  t,
+  rates,
+  forecast,
+  sessions,
+  powerUpSessions,
+  battery,
+}: HoverInput): HoverInfo | undefined => {
   const real = rateAt(rates, t);
   const rate = real ?? rateAt(forecast, t);
   if (!rate) return undefined;
@@ -48,6 +58,7 @@ export const hoverInfo = ({ t, rates, forecast, sessions, battery }: HoverInput)
     value: rate.value,
     predicted: !real,
     incentive: sessionActive(sessions, t),
+    powerUp: sessionActive(powerUpSessions ?? [], t),
     plan: battery ? (battery.find((w) => t >= w.start && t < w.end) ?? 'idle') : undefined,
   };
 };
