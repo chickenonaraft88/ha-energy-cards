@@ -6,7 +6,7 @@ A Home Assistant Lovelace card showing a 24h half-hourly energy price graph, bui
 
 - Line and area chart coloured by price: negative is cyan to blue, 0–5p green, 5–20p green to orange, 20–30p orange to red, 30p+ red. Follows the HA dark/light theme.
 - Header shows the current price (`NOW · HH:mm`, with `· FREE` at 0p or below) and the next price (`NEXT · HH:mm`).
-- Active or upcoming reduced-usage sessions (e.g. Octoplus Power Down) are shaded purple.
+- Active or upcoming reduced-usage sessions (e.g. Octoplus Power Down) are shaded purple; Octoplus Power Up sessions are shaded teal.
 
 ## Installation
 
@@ -25,6 +25,7 @@ next_rate_entity: sensor.octopus_energy_electricity_<mpan>_<serial>_next_rate
 current_day_rates_entity: event.octopus_energy_electricity_<mpan>_<serial>_current_day_rates
 next_day_rates_entity: event.octopus_energy_electricity_<mpan>_<serial>_next_day_rates
 incentive_events_entity: event.octopus_energy_<account>_octoplus_power_down_events
+power_up_events_entity: event.octopus_energy_<account>_octoplus_power_up_events
 ```
 
 | Option | Default | Description |
@@ -36,6 +37,9 @@ incentive_events_entity: event.octopus_energy_<account>_octoplus_power_down_even
 | `incentive_events_entity` | – | Entity with a `joined_events` attribute listing sessions. |
 | `incentive_events_attribute` | `joined_events` | Attribute holding the session list. |
 | `incentive_label` | `POWER DOWN` | Label for incentive sessions. |
+| `power_up_events_entity` | – | Entity with a `joined_events` attribute listing Octoplus Power Up sessions, shaded separately from the incentive events above. |
+| `power_up_events_attribute` | `joined_events` | Attribute holding the power-up session list. |
+| `power_up_label` | `POWER UP` | Label for power-up sessions. |
 | `predbat_prefix` | _(off)_ | Entity prefix of your Predbat install (usually `predbat`). Draws its planned charge and discharge windows, with target %, in a track under the chart. Reads `best_charge_limit` and `best_export_limit`. |
 | `predbat_rates` | `true` | With `predbat_prefix` set, fills the chart after the last published rate (typically tomorrow's, before they are out) with Predbat's predicted rates from `predbat.rates`: a dashed line behind a dotted divider marked `PREDICTED`. `false` turns it off. |
 | `free_label` | `FREE` | Header suffix when the price is 0p or below. |
@@ -47,7 +51,7 @@ incentive_events_entity: event.octopus_energy_<account>_octoplus_power_down_even
 | `height` | `190` | Chart height in px. |
 | `cheapest_window_hours` | _(off)_ | Shades the cheapest contiguous run of this many hours (1-12) in the visible rates. |
 
-Hover over the chart (or tap it on a touch screen) to see a slot's time span and price, whether it falls in an incentive session or is a Predbat prediction, and, with `predbat_prefix` set, what Predbat's plan is doing then. Tap elsewhere to dismiss.
+Hover over the chart (or tap it on a touch screen) to see a slot's time span and price, whether it falls in an incentive or power-up session or is a Predbat prediction, and, with `predbat_prefix` set, what Predbat's plan is doing then. Tap elsewhere to dismiss.
 
 ## Development
 

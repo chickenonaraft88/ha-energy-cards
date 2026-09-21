@@ -35,6 +35,7 @@ const ENTITY_KEYS = [
   'current_day_rates_entity',
   'next_day_rates_entity',
   'incentive_events_entity',
+  'power_up_events_entity',
 ] as const;
 
 const validTime = (raw: unknown): number | undefined => {
@@ -194,6 +195,7 @@ class EnergyPriceGraphCard extends LitElement {
     const scale = priceScale(unit);
     const bands = resolveBands(cfg.cheap_below, cfg.expensive_above);
     const incentiveLabel = cfg.incentive_label ?? 'POWER DOWN';
+    const powerUpLabel = cfg.power_up_label ?? 'POWER UP';
     const freeLabel = cfg.free_label ?? 'FREE';
 
     const currentDay = cfg.current_day_rates_entity ? hass.states[cfg.current_day_rates_entity] : undefined;
@@ -208,6 +210,10 @@ class EnergyPriceGraphCard extends LitElement {
     const sessions = parseSessions(
       cfg.incentive_events_entity ? hass.states[cfg.incentive_events_entity] : undefined,
       cfg.incentive_events_attribute ?? 'joined_events',
+    );
+    const powerUpSessions = parseSessions(
+      cfg.power_up_events_entity ? hass.states[cfg.power_up_events_entity] : undefined,
+      cfg.power_up_events_attribute ?? 'joined_events',
     );
 
     const predbat = cfg.predbat_prefix ? predbatEntityIds(cfg.predbat_prefix) : undefined;
@@ -230,15 +236,23 @@ class EnergyPriceGraphCard extends LitElement {
 
     const active = sessionActive(sessions, now);
     const nextIncentive = slotOverlapsSession(sessions, nextStart);
+    const powerUpActive = sessionActive(powerUpSessions, now);
+    const nextPowerUp = slotOverlapsSession(powerUpSessions, nextStart);
     const pal = palette(dark);
-    const curColor = active ? pal.purple : priceColor(curPrice ?? 0, dark, scale, bands);
-    const nextColor = nextIncentive ? pal.purple : priceColor(nextPrice ?? 0, dark, scale, bands);
+    const curColor = active ? pal.purple : powerUpActive ? pal.teal : priceColor(curPrice ?? 0, dark, scale, bands);
+    const nextColor = nextIncentive
+      ? pal.purple
+      : nextPowerUp
+        ? pal.teal
+        : priceColor(nextPrice ?? 0, dark, scale, bands);
     const nowLineColor = priceColor(curPrice ?? 0, dark, scale, bands);
 
     let curLabel = `NOW · ${fmtTime(curTime)}`;
     if (active) curLabel += ` · ${incentiveLabel}`;
+    else if (powerUpActive) curLabel += ` · ${powerUpLabel}`;
     else if ((curPrice ?? 1) <= 0) curLabel += ` · ${freeLabel}`;
-    const nextLabel = `NEXT · ${fmtTime(nextTime)}${nextIncentive ? ` · ${incentiveLabel}` : ''}`;
+    const incentiveSuffix = nextIncentive ? ` · ${incentiveLabel}` : nextPowerUp ? ` · ${powerUpLabel}` : '';
+    const nextLabel = `NEXT · ${fmtTime(nextTime)}${incentiveSuffix}`;
 
     const spanHours = clampHours(cfg.hours);
     const start = new Date(now);
@@ -275,7 +289,8 @@ class EnergyPriceGraphCard extends LitElement {
       : undefined;
     const cheapestLabel = windowHours ? `CHEAPEST ${windowHours}H` : '';
     const hoverT = this._hoverX === undefined ? undefined : timeAtX(this._hoverX, this._width, start.getTime(), end);
-    const hover = hoverT === undefined ? undefined : hoverInfo({ t: hoverT, rates, forecast, sessions, battery });
+    const hover =
+      hoverT === undefined ? undefined : hoverInfo({ t: hoverT, rates, forecast, sessions, powerUpSessions, battery });
     // The tooltip is centred on the slot's visible part, so it doesn't jump around as the pointer moves within it.
     const hoverMid = hover
       ? xAtTime(
@@ -312,6 +327,7 @@ class EnergyPriceGraphCard extends LitElement {
                 start: start.getTime(),
                 end: start.getTime() + spanHours * HOUR,
                 sessions,
+                powerUpSessions,
                 forecast,
                 battery,
                 chargeColor: pal.blue,
@@ -319,6 +335,8 @@ class EnergyPriceGraphCard extends LitElement {
                 nowColor: nowLineColor,
                 incentiveColor: pal.purple,
                 incentiveLabel,
+                powerUpColor: pal.teal,
+                powerUpLabel,
                 unit,
                 priceScale: scale,
                 bands,
@@ -341,6 +359,7 @@ class EnergyPriceGraphCard extends LitElement {
                 <div class="price">${fmt(hover.value)}<span class="uom">${unit}</span></div>
                 ${hover.predicted ? html`<div class="note">Predicted by Predbat</div>` : nothing}
                 ${hover.incentive ? html`<div class="note">${incentiveLabel}</div>` : nothing}
+                ${hover.powerUp ? html`<div class="note">${powerUpLabel}</div>` : nothing}
                 ${hover.plan ? html`<div class="note">Predbat: ${planText(hover.plan)}</div>` : nothing}
               </div>`
             : nothing

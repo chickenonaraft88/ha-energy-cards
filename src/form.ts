@@ -10,6 +10,9 @@ const LABELS: Record<string, string> = {
   next_day_rates_entity: 'Next day rates',
   incentive_events_entity: 'Reduced usage incentive events',
   incentive_label: 'Incentive label',
+  power_up_events_entity: 'Power up events',
+  power_up_label: 'Power up label',
+  power_up_events_attribute: 'Power up events attribute',
   free_label: 'Free label',
   unit: 'Unit',
   rate_multiplier: 'Rate multiplier',
@@ -29,6 +32,8 @@ const HELPERS: Record<string, string> = {
   current_day_rates_entity: 'Event entity with a "rates" attribute.',
   next_day_rates_entity: "Optional. Empty until tomorrow's rates are published.",
   incentive_events_entity: 'Optional. Shades active/upcoming sessions on the chart.',
+  power_up_events_entity:
+    'Optional. Shades active/upcoming Octoplus Power Up sessions on the chart, separately from the incentive events above.',
   predbat_prefix: 'Optional, usually "predbat". Shows the planned battery charge/discharge under the chart.',
   predbat_rates: "Fills the chart after the last published rate with Predbat's predictions, marked with a dotted line.",
   cheap_below: 'Optional. In the card unit. Rates below this are green; set with or without Expensive above.',
@@ -54,6 +59,7 @@ export const buildConfigForm = () => ({
     { name: 'current_rate_entity', selector: { entity: { domain: 'sensor' } } },
     { name: 'next_rate_entity', selector: { entity: { domain: 'sensor' } } },
     { name: 'incentive_events_entity', selector: { entity: { domain: 'event' } } },
+    { name: 'power_up_events_entity', selector: { entity: { domain: 'event' } } },
     { name: 'predbat_prefix', selector: { text: {} } },
     { name: 'predbat_rates', selector: { boolean: {} } },
     {
@@ -62,6 +68,8 @@ export const buildConfigForm = () => ({
       schema: [
         { name: 'incentive_label', selector: { text: {} } },
         { name: 'incentive_events_attribute', selector: { text: {} } },
+        { name: 'power_up_label', selector: { text: {} } },
+        { name: 'power_up_events_attribute', selector: { text: {} } },
         { name: 'free_label', selector: { text: {} } },
         { name: 'unit', selector: { text: {} } },
         { name: 'rate_multiplier', selector: { number: { mode: 'box', step: 'any' } } },

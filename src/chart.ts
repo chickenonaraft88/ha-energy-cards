@@ -3,7 +3,7 @@ import { fmtTick, xTicks, yAxis } from './axis';
 import { gradientStops, type PriceBands } from './colors';
 import { fmtTime } from './data';
 import { chartSummary, PAD, xAtTime } from './hover';
-import { badgeWidth, clearOf, clearOfAll, fitLabel, type Span } from './layout';
+import { badgeWidth, clearOfAll, fitLabel, type Span } from './layout';
 import { windowLabels, windowTitle } from './predbat';
 import type { BatteryWindow, Rate, Session } from './types';
 
@@ -17,6 +17,8 @@ export interface ChartInput {
   start: number;
   end: number;
   sessions: Session[];
+  /** Octoplus Power Up sessions, shaded separately from `sessions`. */
+  powerUpSessions: Session[];
   /** Predbat's predicted rates for the stretch after the real ones end; drawn dashed behind a dotted divider. */
   forecast?: Rate[];
   /** Predbat plan windows; undefined when Predbat isn't configured (no track is drawn). */
@@ -26,6 +28,8 @@ export interface ChartInput {
   nowColor: string;
   incentiveColor: string;
   incentiveLabel: string;
+  powerUpColor: string;
+  powerUpLabel: string;
   unit: string;
   /** Price unit size relative to pence, see `priceScale`. */
   priceScale: number;
@@ -121,20 +125,23 @@ export const renderChart = (c: ChartInput): TemplateResult => {
 
   // Badges already placed along the top edge, which later ones keep clear of.
   const placed: Span[] = nowVisible ? [nowBadge] : [];
-  const sessions = c.sessions
-    .filter((s) => s.end >= c.start && s.start <= c.end)
-    .map((s) => {
-      const x1 = x(Math.max(s.start, c.start));
-      const x2 = x(Math.min(s.end, c.end));
-      const labelW = badgeWidth(c.incentiveLabel);
-      const bx = clearOf(x1 + 4, labelW, nowVisible ? nowBadge : undefined, 0, W - PAD.right - labelW);
-      placed.push({ x: bx, w: labelW });
-      return svg`<rect x=${x1} y=${PAD.top} width=${Math.max(x2 - x1, 1)} height=${plotH}
-          fill=${c.incentiveColor} opacity=${c.dark ? 0.14 : 0.09}></rect>
-        <line x1=${x1} x2=${x1} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${c.incentiveColor}></line>
-        <line x1=${x2} x2=${x2} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${c.incentiveColor}></line>
-        ${badge(bx, BADGE_Y, c.incentiveLabel, c.incentiveColor)}`;
-    });
+  const sessionBand = (list: Session[], color: string, label: string) =>
+    list
+      .filter((s) => s.end >= c.start && s.start <= c.end)
+      .map((s) => {
+        const x1 = x(Math.max(s.start, c.start));
+        const x2 = x(Math.min(s.end, c.end));
+        const labelW = badgeWidth(label);
+        const bx = clearOfAll(x1 + 4, labelW, placed, 0, W - PAD.right - labelW);
+        placed.push({ x: bx, w: labelW });
+        return svg`<rect x=${x1} y=${PAD.top} width=${Math.max(x2 - x1, 1)} height=${plotH}
+          fill=${color} opacity=${c.dark ? 0.14 : 0.09}></rect>
+        <line x1=${x1} x2=${x1} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${color}></line>
+        <line x1=${x2} x2=${x2} y1=${PAD.top} y2=${PAD.top + plotH} stroke=${color}></line>
+        ${badge(bx, BADGE_Y, label, color)}`;
+      });
+  const sessions = sessionBand(c.sessions, c.incentiveColor, c.incentiveLabel);
+  const powerUpSessions = sessionBand(c.powerUpSessions, c.powerUpColor, c.powerUpLabel);
 
   const cw = c.cheapestWindow;
   let cheapestBand: TemplateResult | typeof nothing = nothing;
@@ -212,6 +219,7 @@ export const renderChart = (c: ChartInput): TemplateResult => {
     ${grid}
     ${cheapestBand}
     ${sessions}
+    ${powerUpSessions}
     ${hoverBand}
     <g clip-path="url(#${cid})">
       <path d=${area} fill="url(#${gid})" fill-opacity="0.16" stroke="none"></path>

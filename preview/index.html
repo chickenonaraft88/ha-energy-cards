@@ -37,6 +37,7 @@
   const dark = q.get('theme') === 'dark';
   const scenario = q.get('scenario') || 'default';
   // entity=pence: the rate entities report pence (use with cfg={"rate_multiplier":1}) instead of £
+  // powerup=1: configures a mock Octoplus Power Up events entity, with a session right after the power-down one
   const blank = q.get('blank') === '1'; // rate sensors report '' instead of a number
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   if (q.get('width')) document.getElementById('card').style.width = `${q.get('width')}px`;
@@ -75,6 +76,8 @@
   const slot = (t) => today_rates.concat(tomorrow_rates).find((r) => Date.parse(r.start) <= t && t < Date.parse(r.end));
   const cur = slot(fixedNow), next = slot(fixedNow + 18e5);
   const sessionStart = today.getTime() + 17 * 36e5 + 30 * 6e4;
+  // The power-up session starts right where the power-down one ends, so their badges sit next to each other.
+  const powerUpStart = sessionStart + 36e5;
 
   const states = {
     'event.import_current_day_rates': { state: 'x', attributes: { rates: today_rates } },
@@ -86,6 +89,14 @@
       attributes: {
         joined_events: scenario === 'nosession' ? [] : [
           { start: new Date(sessionStart).toISOString(), end: new Date(sessionStart + 36e5).toISOString() },
+        ],
+      },
+    },
+    'event.account_octoplus_power_up_events': {
+      state: 'x',
+      attributes: {
+        joined_events: scenario === 'nosession' ? [] : [
+          { start: new Date(powerUpStart).toISOString(), end: new Date(powerUpStart + 36e5).toISOString() },
         ],
       },
     },
@@ -135,6 +146,7 @@
       current_day_rates_entity: 'event.import_current_day_rates',
       next_day_rates_entity: 'event.import_next_day_rates',
       incentive_events_entity: 'event.account_octoplus_power_down_events',
+      ...(q.get('powerup') === '1' ? { power_up_events_entity: 'event.account_octoplus_power_up_events' } : {}),
       ...(q.get('predbat') === '1' ? { predbat_prefix: 'predbat' } : {}),
       ...JSON.parse(q.get('cfg') || '{}'), // e.g. cfg={"hours":0} to override card config
     });

@@ -12,6 +12,7 @@ describe('buildStubConfig', () => {
       `sensor.${imp}_current_rate`,
       `sensor.${imp}_next_rate`,
       'event.octopus_energy_a_1_octoplus_power_down_events',
+      'event.octopus_energy_a_1_octoplus_power_up_events',
     ];
     expect(buildStubConfig(ids)).toEqual({
       current_rate_entity: `sensor.${imp}_current_rate`,
@@ -19,6 +20,7 @@ describe('buildStubConfig', () => {
       current_day_rates_entity: `event.${imp}_current_day_rates`,
       next_day_rates_entity: `event.${imp}_next_day_rates`,
       incentive_events_entity: 'event.octopus_energy_a_1_octoplus_power_down_events',
+      power_up_events_entity: 'event.octopus_energy_a_1_octoplus_power_up_events',
       predbat_prefix: '',
     });
   });
@@ -42,6 +44,7 @@ describe('buildStubConfig', () => {
       current_day_rates_entity: `event.${imp}_current_day_rates`,
       next_day_rates_entity: '',
       incentive_events_entity: '',
+      power_up_events_entity: '',
       predbat_prefix: '',
     });
   });

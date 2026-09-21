@@ -7,12 +7,29 @@ export interface Palette {
   orange: string;
   red: string;
   purple: string;
+  teal: string;
 }
 
 export const palette = (dark: boolean): Palette =>
   dark
-    ? { blue: '#0A84FF', cyan: '#64D2FF', green: '#30D158', orange: '#FF9F0A', red: '#FF453A', purple: '#BF5AF2' }
-    : { blue: '#007AFF', cyan: '#32ADE6', green: '#34C759', orange: '#FF9500', red: '#FF3B30', purple: '#AF52DE' };
+    ? {
+        blue: '#0A84FF',
+        cyan: '#64D2FF',
+        green: '#30D158',
+        orange: '#FF9F0A',
+        red: '#FF453A',
+        purple: '#BF5AF2',
+        teal: '#6AC4DC',
+      }
+    : {
+        blue: '#007AFF',
+        cyan: '#32ADE6',
+        green: '#34C759',
+        orange: '#FF9500',
+        red: '#FF3B30',
+        purple: '#AF52DE',
+        teal: '#30B0C7',
+      };
 
 const mix = (a: string, b: string, t: number): string => {
   const ah = parseInt(a.slice(1), 16);
