@@ -42,7 +42,7 @@ const HELPERS: Record<string, string> = {
   cheapest_window_hours: 'Optional. Shades the cheapest contiguous run of this many hours in the visible rates.',
   rate_multiplier: 'Applied to raw values. 100 converts £ to p.',
   devices:
-    "Optional. Power sensors; the card learns each one's typical run shape from its history and suggests the cheapest time to run it today.",
+    "Optional. Power sensors (watts, not energy/consumption totals); the card learns each one's typical run shape from its history and suggests the cheapest time to run it today.",
 };
 
 /**
@@ -65,7 +65,7 @@ export const buildConfigForm = () => ({
     { name: 'power_up_events_entity', selector: { entity: { domain: 'event' } } },
     { name: 'predbat_prefix', selector: { text: {} } },
     { name: 'predbat_rates', selector: { boolean: {} } },
-    { name: 'devices', selector: { entity: { domain: 'sensor', multiple: true } } },
+    { name: 'devices', selector: { entity: { domain: 'sensor', device_class: 'power', multiple: true } } },
     {
       type: 'expandable',
       title: 'Advanced',
