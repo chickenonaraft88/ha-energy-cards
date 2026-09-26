@@ -120,18 +120,22 @@ export interface BestWindow {
 /**
  * Cheapest contiguous window the length of `hourlyWatts`, starting on the hour, between `start` and `end`. Cost
  * is summed hour by hour: `hourlyWatts[i]` in kW at that hour's average rate. A candidate start is skipped when
- * any of its hours has an incomplete rate (a missing half-hour slot); undefined when none is fully known.
+ * any of its hours has an incomplete rate (a missing half-hour slot), or when it falls before `now` - a device
+ * can't be started in the past, even if `start` (the top of the current hour) already has. Defaults `now` to
+ * `start` so callers that don't care about "the past" (e.g. tests scanning a whole day) see every candidate.
  */
 export const bestWindow = (
   hourlyWatts: number[],
   rates: Rate[],
   start: number,
   end: number,
+  now: number = start,
 ): BestWindow | undefined => {
   const length = hourlyWatts.length;
   if (length === 0) return undefined;
   let best: BestWindow | undefined;
   for (let t = start; t + length * HOUR_MS <= end; t += HOUR_MS) {
+    if (t < now) continue;
     let cost = 0;
     let ok = true;
     for (let i = 0; i < length; i++) {

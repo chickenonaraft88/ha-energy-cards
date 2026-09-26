@@ -139,11 +139,15 @@ class EnergyPriceGraphCard extends LitElement {
     const callWS = this.hass?.callWS;
     if (!ids?.length || !callWS) return;
     const key = ids.join(',');
+    if (this._deviceStatsKey === key) return; // already loaded, or an attempt is already in flight
     this._deviceStatsKey = key;
     let raw: unknown;
     try {
       raw = await callWS(statisticsRequest(ids, Date.now()));
     } catch {
+      // Leave _deviceStatsKey unset so the next render (or the 4-hour timer) retries, rather than giving up
+      // on this device list until it changes.
+      this._deviceStatsKey = '';
       return;
     }
     if (this._deviceStatsKey !== key) return; // the device list changed again while this was in flight
@@ -342,7 +346,7 @@ class EnergyPriceGraphCard extends LitElement {
       .map((id, i) => {
         const stats = this._deviceStats[id];
         const shape = stats && buildDeviceShape(findRuns(stats, DEFAULT_IDLE_WATTS));
-        const win = shape && bestWindow(shape.hourlyWatts, rates, start.getTime(), end);
+        const win = shape && bestWindow(shape.hourlyWatts, rates, start.getTime(), end, now);
         return win
           ? {
               name: hass.states[id]?.attributes?.friendly_name ?? id,

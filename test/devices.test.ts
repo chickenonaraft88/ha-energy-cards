@@ -100,6 +100,14 @@ describe('bestWindow', () => {
   it('is undefined for an empty shape', () => {
     expect(bestWindow([], rates, dayStart, dayStart + 24 * HOUR)).toBeUndefined();
   });
+
+  it('skips candidates starting before now, even when they start on the hour', () => {
+    // The top of the current hour (14:00) has already passed at 14:45; the cheapest reachable window
+    // starting at or after now must begin at 15:00, not the earlier cheap band at 02:00.
+    const now = dayStart + 14 * HOUR + 45 * 60000;
+    const win = bestWindow([1000, 1000], rates, dayStart, dayStart + 24 * HOUR, now);
+    expect(win?.start).toBeGreaterThanOrEqual(now);
+  });
 });
 
 describe('statisticsRequest', () => {
