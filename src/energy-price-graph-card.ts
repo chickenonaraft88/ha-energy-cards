@@ -54,6 +54,13 @@ const validTime = (raw: unknown): number | undefined => {
   return Number.isFinite(t) ? t : undefined;
 };
 
+interface DeviceRow {
+  name: string;
+  color: string;
+  start: number;
+  cost: number;
+}
+
 class EnergyPriceGraphCard extends LitElement {
   static properties = {
     hass: { attribute: false },
@@ -83,6 +90,12 @@ class EnergyPriceGraphCard extends LitElement {
   private _deviceTimer?: number;
   /** The `devices` list (joined) that `_deviceStats` was last fetched for, so it's refetched when it changes. */
   private _deviceStatsKey = '';
+  /** `deviceRows` from the last `render()`, reused as-is when the only thing that changed is `_hoverX` - a
+   * pointermove re-renders the chart but never changes which device windows are shown. `_deviceRowsClean` is
+   * cleared in `shouldUpdate()` rather than diffing render's inputs, since that's cheaper and can't drift out
+   * of sync; both start `undefined`, which is falsy, so the first render always computes. */
+  private _deviceRows?: DeviceRow[];
+  private _deviceRowsClean?: boolean;
 
   static getStubConfig(hass?: HomeAssistant, entities: string[] = []): Partial<EnergyPriceGraphCardConfig> {
     // `entities` is only a subset of the user's entities, so search all states.
@@ -221,6 +234,7 @@ class EnergyPriceGraphCard extends LitElement {
   }
 
   protected shouldUpdate(changed: PropertyValues): boolean {
+    if (!(changed.size === 1 && changed.has('_hoverX'))) this._deviceRowsClean = false;
     if (changed.size === 1 && changed.has('hass')) {
       const old = changed.get('hass') as HomeAssistant | undefined;
       const cfg = this._config;
@@ -340,23 +354,28 @@ class EnergyPriceGraphCard extends LitElement {
     const cheapestLabel = windowHours ? `CHEAPEST ${windowHours}H` : '';
 
     // Best-time-to-run rows: a device is only listed once its history yields a confident shape and a window that
-    // fully fits the visible rates - never a placeholder "not enough data yet" row.
-    const devColors = deviceColors(dark);
-    const deviceRows = (cfg.devices ?? [])
-      .map((id, i) => {
-        const stats = this._deviceStats[id];
-        const shape = stats && buildDeviceShape(findRuns(stats, DEFAULT_IDLE_WATTS));
-        const win = shape && bestWindow(shape.hourlyWatts, rates, start.getTime(), end, now);
-        return win
-          ? {
-              name: hass.states[id]?.attributes?.friendly_name ?? id,
-              color: devColors[i % devColors.length],
-              start: win.start,
-              cost: win.cost,
-            }
-          : undefined;
-      })
-      .filter((r): r is NonNullable<typeof r> => r !== undefined);
+    // fully fits the visible rates - never a placeholder "not enough data yet" row. Recomputing this runs
+    // findRuns/buildDeviceShape/bestWindow per device, so it's skipped on a hover-only re-render (see willUpdate).
+    if (!this._deviceRowsClean) {
+      const devColors = deviceColors(dark);
+      this._deviceRows = (cfg.devices ?? [])
+        .map((id, i) => {
+          const stats = this._deviceStats[id];
+          const shape = stats && buildDeviceShape(findRuns(stats, DEFAULT_IDLE_WATTS));
+          const win = shape && bestWindow(shape.hourlyWatts, rates, start.getTime(), end, now);
+          return win
+            ? {
+                name: hass.states[id]?.attributes?.friendly_name ?? id,
+                color: devColors[i % devColors.length],
+                start: win.start,
+                cost: win.cost,
+              }
+            : undefined;
+        })
+        .filter((r): r is DeviceRow => r !== undefined);
+      this._deviceRowsClean = true;
+    }
+    const deviceRows = this._deviceRows ?? [];
     const hoverT = this._hoverX === undefined ? undefined : timeAtX(this._hoverX, this._width, start.getTime(), end);
     const hover =
       hoverT === undefined ? undefined : hoverInfo({ t: hoverT, rates, forecast, sessions, powerUpSessions, battery });

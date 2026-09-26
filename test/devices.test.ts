@@ -120,6 +120,7 @@ describe('statisticsRequest', () => {
       end_time: new Date(now).toISOString(),
       statistic_ids: ['sensor.washer_power'],
       period: 'hour',
+      types: ['mean'],
     });
   });
 });

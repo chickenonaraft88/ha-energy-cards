@@ -1,6 +1,6 @@
 import type { HassEntity, Rate, Session } from './types';
 
-const SLOT_MS = 30 * 60 * 1000;
+export const SLOT_MS = 30 * 60 * 1000;
 
 // Attribute values are untyped. Number(null) and new Date(null) are valid (0 and 1970), and Number('') is 0,
 // so absent and blank values have to be rejected before converting.

@@ -1,8 +1,7 @@
-import { rateAt } from './data';
+import { rateAt, SLOT_MS } from './data';
 import type { Rate } from './types';
 
 const HOUR_MS = 3600000;
-const HALF_HOUR_MS = 1800000;
 
 /** One hourly bucket from `recorder/statistics_during_period`, mean power in watts. */
 export interface StatPoint {
@@ -30,6 +29,7 @@ export const statisticsRequest = (entityIds: string[], now: number): Record<stri
   end_time: new Date(now).toISOString(),
   statistic_ids: entityIds,
   period: 'hour',
+  types: ['mean'],
 });
 
 const toMs = (x: unknown): number =>
@@ -106,7 +106,7 @@ export const buildDeviceShape = (runs: StatPoint[][]): DeviceShape | undefined =
 /** Average rate covering the hour starting at `hourStart`, from its two half-hour slots; undefined if either is missing. */
 const hourlyRate = (rates: Rate[], hourStart: number): number | undefined => {
   const a = rateAt(rates, hourStart);
-  const b = rateAt(rates, hourStart + HALF_HOUR_MS);
+  const b = rateAt(rates, hourStart + SLOT_MS);
   return a && b ? (a.value + b.value) / 2 : undefined;
 };
 
