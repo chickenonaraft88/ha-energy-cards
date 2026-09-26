@@ -60,3 +60,13 @@ export const fmtTick = (v: number, step: number, unit: string): string => {
   if (!isCurrencyUnit(unit)) return `${num}${sym}`;
   return num.startsWith('-') ? `-${sym}${num.slice(1)}` : `${sym}${num}`;
 };
+
+/**
+ * A one-off amount (not a per-kWh rate) in the card's unit, e.g. the estimated cost to run a device: whole
+ * pence/cents with the symbol suffixed, or 2-decimal currency with the symbol prefixed.
+ */
+export const formatCost = (value: number, unit: string): string => {
+  const sym = unitSymbol(unit);
+  if (!isCurrencyUnit(unit)) return `${Math.round(value)}${sym}`;
+  return value < 0 ? `-${sym}${Math.abs(value).toFixed(2)}` : `${sym}${value.toFixed(2)}`;
+};

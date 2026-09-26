@@ -1,6 +1,7 @@
 import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
+import { formatCost } from './axis';
 import { renderChart } from './chart';
-import { palette, priceColor, priceScale, resolveBands } from './colors';
+import { deviceColors, palette, priceColor, priceScale, resolveBands } from './colors';
 import {
   cheapestWindow,
   clampHeight,
@@ -17,6 +18,16 @@ import {
   sessionActive,
   slotOverlapsSession,
 } from './data';
+import {
+  bestWindow,
+  buildDeviceShape,
+  DEFAULT_IDLE_WATTS,
+  findRuns,
+  parseStatistics,
+  REFRESH_INTERVAL_MS,
+  type StatPoint,
+  statisticsRequest,
+} from './devices';
 import { buildConfigForm } from './form';
 import { hoverInfo, planText, timeAtX, tooltipLeft, xAtTime } from './hover';
 import { hasWindowIn, parseBatteryWindows, parseForecastRates, predbatEntityIds } from './predbat';
@@ -51,6 +62,7 @@ class EnergyPriceGraphCard extends LitElement {
     _tick: { state: true },
     _hoverX: { state: true },
     _tipWidth: { state: true },
+    _deviceStats: { state: true },
   };
 
   hass?: HomeAssistant;
@@ -61,11 +73,16 @@ class EnergyPriceGraphCard extends LitElement {
   _hoverX?: number;
   /** Measured width of the tooltip, so it can be kept inside the card. */
   _tipWidth = 0;
+  /** Hourly power history per configured device entity, from the recorder; undefined until fetched (or it fails). */
+  _deviceStats: Record<string, StatPoint[] | undefined> = {};
 
   private _uid = `epgc${++uidCounter}`;
   private _ro?: ResizeObserver;
   private _observed?: Element;
   private _timer?: number;
+  private _deviceTimer?: number;
+  /** The `devices` list (joined) that `_deviceStats` was last fetched for, so it's refetched when it changes. */
+  private _deviceStatsKey = '';
 
   static getStubConfig(hass?: HomeAssistant, entities: string[] = []): Partial<EnergyPriceGraphCardConfig> {
     // `entities` is only a subset of the user's entities, so search all states.
@@ -95,6 +112,8 @@ class EnergyPriceGraphCard extends LitElement {
     super.connectedCallback();
     // Re-render every minute so the NOW marker and labels keep moving.
     this._timer = window.setInterval(() => this._tick++, 60000);
+    // Device history barely changes minute to minute; refetch occasionally rather than on every render.
+    this._deviceTimer = window.setInterval(() => this._loadDeviceStats(), REFRESH_INTERVAL_MS);
     window.addEventListener('pointerdown', this._outside);
     // disconnectedCallback dropped the observer; a card that was only moved isn't necessarily re-rendered.
     if (this.hasUpdated) this._observe();
@@ -104,9 +123,33 @@ class EnergyPriceGraphCard extends LitElement {
     super.disconnectedCallback();
     window.removeEventListener('pointerdown', this._outside);
     window.clearInterval(this._timer);
+    window.clearInterval(this._deviceTimer);
     this._ro?.disconnect();
     this._ro = undefined;
     this._observed = undefined;
+  }
+
+  /**
+   * Fetches hourly power history for the configured devices and stores it for `render()` to build shapes and
+   * windows from. A device whose history fails to load, or that has none, just doesn't get a row - never an
+   * error state, matching how the rest of the card hides sections it has nothing to show.
+   */
+  private async _loadDeviceStats(): Promise<void> {
+    const ids = this._config?.devices;
+    const callWS = this.hass?.callWS;
+    if (!ids?.length || !callWS) return;
+    const key = ids.join(',');
+    this._deviceStatsKey = key;
+    let raw: unknown;
+    try {
+      raw = await callWS(statisticsRequest(ids, Date.now()));
+    } catch {
+      return;
+    }
+    if (this._deviceStatsKey !== key) return; // the device list changed again while this was in flight
+    const next: Record<string, StatPoint[] | undefined> = {};
+    for (const id of ids) next[id] = parseStatistics(raw, id);
+    this._deviceStats = next;
   }
 
   // A tap elsewhere dismisses the tooltip; a mouse dismisses it by leaving the chart.
@@ -155,6 +198,9 @@ class EnergyPriceGraphCard extends LitElement {
     const tip = this.renderRoot.querySelector<HTMLElement>('.tooltip');
     const tipWidth = tip?.getBoundingClientRect().width;
     if (tipWidth !== undefined && tipWidth !== this._tipWidth) this._tipWidth = tipWidth;
+
+    const ids = this._config?.devices;
+    if (ids?.length && this.hass?.callWS && ids.join(',') !== this._deviceStatsKey) void this._loadDeviceStats();
   }
 
   private _observe(): void {
@@ -288,6 +334,25 @@ class EnergyPriceGraphCard extends LitElement {
         )
       : undefined;
     const cheapestLabel = windowHours ? `CHEAPEST ${windowHours}H` : '';
+
+    // Best-time-to-run rows: a device is only listed once its history yields a confident shape and a window that
+    // fully fits the visible rates - never a placeholder "not enough data yet" row.
+    const devColors = deviceColors(dark);
+    const deviceRows = (cfg.devices ?? [])
+      .map((id, i) => {
+        const stats = this._deviceStats[id];
+        const shape = stats && buildDeviceShape(findRuns(stats, DEFAULT_IDLE_WATTS));
+        const win = shape && bestWindow(shape.hourlyWatts, rates, start.getTime(), end);
+        return win
+          ? {
+              name: hass.states[id]?.attributes?.friendly_name ?? id,
+              color: devColors[i % devColors.length],
+              start: win.start,
+              cost: win.cost,
+            }
+          : undefined;
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== undefined);
     const hoverT = this._hoverX === undefined ? undefined : timeAtX(this._hoverX, this._width, start.getTime(), end);
     const hover =
       hoverT === undefined ? undefined : hoverInfo({ t: hoverT, rates, forecast, sessions, powerUpSessions, battery });
@@ -377,6 +442,11 @@ class EnergyPriceGraphCard extends LitElement {
               ${forecast.length ? html`<span><i class="dashed"></i>Predbat prices</span>` : nothing}
               ${planShown ? html`<span>Predbat plan</span>` : nothing}
             </div>`
+          : nothing
+      }
+      ${
+        deviceRows.length
+          ? html`<div class="summary">${deviceRows.map((r) => html`<div class="row"><i style="background:${r.color}"></i><span class="name">${r.name}</span><span class="time">${fmtTime(r.start)}</span><span class="cost">${formatCost(r.cost, unit)}</span></div>`)}</div>`
           : nothing
       }
     </ha-card>`;
@@ -486,6 +556,12 @@ class EnergyPriceGraphCard extends LitElement {
       border-radius: 0;
       background: none;
     }
+    .summary { margin-top: 10px; padding: 10px 16px 0; border-top: 1px solid var(--divider-color, rgba(120, 120, 128, 0.24)); }
+    .summary .row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+    .summary i { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .summary .name { flex-grow: 1; font-size: 13px; font-weight: 600; }
+    .summary .time { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .summary .cost { font-size: 12px; color: var(--secondary-text-color); }
     svg {
       display: block;
     }

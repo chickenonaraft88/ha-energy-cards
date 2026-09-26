@@ -6,6 +6,8 @@ export interface HassEntity {
 export interface HomeAssistant {
   states: Record<string, HassEntity | undefined>;
   themes?: { darkMode?: boolean };
+  /** Not present on the lightweight preview stub - device stats are simply skipped when it's missing. */
+  callWS?: (msg: Record<string, unknown>) => Promise<unknown>;
 }
 
 export interface EnergyPriceGraphCardConfig {
@@ -43,6 +45,8 @@ export interface EnergyPriceGraphCardConfig {
   height?: number;
   /** Shades the cheapest contiguous run of this many hours in the visible rates. Unset disables it. */
   cheapest_window_hours?: number;
+  /** Power sensors to suggest a cheapest run time for, learned from each one's usage history. */
+  devices?: string[];
 }
 
 export interface Rate {
