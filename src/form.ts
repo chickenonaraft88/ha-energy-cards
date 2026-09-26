@@ -24,6 +24,7 @@ const LABELS: Record<string, string> = {
   incentive_events_attribute: 'Incentive events attribute',
   predbat_prefix: 'Predbat entity prefix',
   predbat_rates: 'Show Predbat predicted rates',
+  devices: 'Devices to schedule',
 };
 
 const HELPERS: Record<string, string> = {
@@ -40,6 +41,8 @@ const HELPERS: Record<string, string> = {
   expensive_above: 'Optional. In the card unit. Rates at or above this are red; those in between are amber.',
   cheapest_window_hours: 'Optional. Shades the cheapest contiguous run of this many hours in the visible rates.',
   rate_multiplier: 'Applied to raw values. 100 converts £ to p.',
+  devices:
+    "Optional. Power sensors; the card learns each one's typical run shape from its history and suggests the cheapest time to run it today.",
 };
 
 /**
@@ -62,6 +65,7 @@ export const buildConfigForm = () => ({
     { name: 'power_up_events_entity', selector: { entity: { domain: 'event' } } },
     { name: 'predbat_prefix', selector: { text: {} } },
     { name: 'predbat_rates', selector: { boolean: {} } },
+    { name: 'devices', selector: { entity: { domain: 'sensor', multiple: true } } },
     {
       type: 'expandable',
       title: 'Advanced',

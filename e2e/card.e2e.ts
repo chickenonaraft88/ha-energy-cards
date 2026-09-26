@@ -520,6 +520,45 @@ for (const width of [360, 560]) {
   });
 }
 
+test('shows no device summary unless devices are configured', async ({ page }) => {
+  await open(page, 'theme=dark');
+  await expect(page.locator('energy-price-graph-card .summary')).toHaveCount(0);
+});
+
+test('shows a best-time-to-run row per configured device, with a start time and a cost', async ({ page }) => {
+  const errors = await open(page, 'theme=dark&devices=1');
+  const rows = page.locator('energy-price-graph-card .summary .row');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText('Washing Machine');
+  await expect(rows.nth(0).locator('.time')).toHaveText(/^\d\d:\d\d$/);
+  await expect(rows.nth(0).locator('.cost')).toHaveText(/p$/);
+  await expect(rows.nth(1)).toContainText('Dishwasher');
+  expect(errors).toEqual([]);
+});
+
+test('the device summary coexists with the Predbat legend and track', async ({ page }) => {
+  const errors = await open(page, 'theme=dark&devices=1&predbat=1');
+  await expect(page.locator('energy-price-graph-card .summary .row')).toHaveCount(2);
+  await expect(page.locator('energy-price-graph-card .legend')).toContainText('Predbat plan');
+  await expect(page.locator('energy-price-graph-card svg g.battery')).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+for (const width of [240, 360]) {
+  test(`device summary rows do not clip or overflow at ${width}px`, async ({ page }) => {
+    await open(page, `theme=dark&devices=1&width=${width}`);
+    const card = await page.locator('energy-price-graph-card ha-card').boundingBox();
+    const rows = page.locator('energy-price-graph-card .summary .row');
+    for (const box of await rows.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()))) {
+      expect(card && box.left >= card.x - 0.5 && box.right <= card.x + card.width + 0.5, JSON.stringify(box)).toBe(
+        true,
+      );
+    }
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+}
+
 test.describe('touch', () => {
   test.use({ hasTouch: true });
 

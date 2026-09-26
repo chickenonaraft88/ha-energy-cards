@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gradientStops, palette, priceColor, priceScale, resolveBands } from '../src/colors';
+import { deviceColors, gradientStops, palette, priceColor, priceScale, resolveBands } from '../src/colors';
 
 describe('priceColor', () => {
   const p = palette(true);
@@ -125,5 +125,22 @@ describe('price bands', () => {
     expect(resolveBands(30, 10)).toBeUndefined();
     expect(resolveBands(10, 30)).toEqual({ cheapBelow: 10, expensiveAbove: 30 });
     expect(resolveBands(undefined, 30)).toEqual({ cheapBelow: undefined, expensiveAbove: 30 });
+  });
+});
+
+describe('deviceColors', () => {
+  it('does not reuse any colour already in the price/Predbat/incentive palette', () => {
+    for (const dark of [true, false]) {
+      const used = new Set(Object.values(palette(dark)).map((c) => c.toLowerCase()));
+      for (const c of deviceColors(dark)) expect(used.has(c.toLowerCase())).toBe(false);
+    }
+  });
+
+  it('uses a different palette for light and dark', () => {
+    expect(deviceColors(true)).not.toEqual(deviceColors(false));
+  });
+
+  it('has at least 3 colours to cycle through', () => {
+    expect(deviceColors(true).length).toBeGreaterThanOrEqual(3);
   });
 });

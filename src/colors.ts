@@ -106,3 +106,12 @@ export const gradientStops = (dark: boolean, scale = 1, bands?: PriceBands): Arr
  * Follows the unit, not `rate_multiplier`: a pence sensor uses a multiplier of 1 too.
  */
 export const priceScale = (unit: string): number => (isCurrencyUnit(unit) ? 0.01 : 1);
+
+/**
+ * Colours for the "best time to run" device rows, cycling for however many devices are configured. Deliberately
+ * separate from `Palette`: every one of its colours is already spoken for (price bands, Predbat charge/discharge,
+ * the incentive and power-up badges), so reusing one here would make a device row look like it belonged to
+ * whichever of those features happens to share its colour.
+ */
+export const deviceColors = (dark: boolean): string[] =>
+  dark ? ['#FF375F', '#5E5CE6', '#FFD60A'] : ['#FF2D55', '#5856D6', '#FFCC00'];

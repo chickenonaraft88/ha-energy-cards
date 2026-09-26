@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtTick, unitSymbol, xTicks, yAxis } from '../src/axis';
+import { fmtTick, formatCost, unitSymbol, xTicks, yAxis } from '../src/axis';
 
 describe('yAxis', () => {
   it('keeps the pence axis unchanged for typical prices', () => {
@@ -55,6 +55,21 @@ describe('fmtTick', () => {
 
   it('suffixes non-currency symbols', () => {
     expect(fmtTick(0.25, 0.05, 'c/kWh')).toBe('0.25c');
+  });
+});
+
+describe('formatCost', () => {
+  it('rounds to whole pence, suffixed', () => {
+    expect(formatCost(23.7, 'p/kWh')).toBe('24p');
+    expect(formatCost(0.2, 'p/kWh')).toBe('0p');
+  });
+
+  it('shows 2 decimals with a prefixed currency sign', () => {
+    expect(formatCost(0.237, '£/kWh')).toBe('£0.24');
+  });
+
+  it('puts the minus sign before a currency sign', () => {
+    expect(formatCost(-0.237, '£/kWh')).toBe('-£0.24');
   });
 });
 

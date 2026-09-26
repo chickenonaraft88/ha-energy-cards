@@ -38,6 +38,7 @@
   const scenario = q.get('scenario') || 'default';
   // entity=pence: the rate entities report pence (use with cfg={"rate_multiplier":1}) instead of £
   // powerup=1: configures a mock Octoplus Power Up events entity, with a session right after the power-down one
+  // devices=1: configures 2 mock power sensors with a hass.callWS stub returning synthetic run history for them
   const blank = q.get('blank') === '1'; // rate sensors report '' instead of a number
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   if (q.get('width')) document.getElementById('card').style.width = `${q.get('width')}px`;
@@ -102,6 +103,30 @@
     },
   };
 
+  // devices=1: 2 power sensors with 10 days of synthetic hourly history, each running at the same (fairly
+  // expensive) time every day, so buildDeviceShape has enough runs and the recommendation actually differs
+  // from when the device is usually run. Real recorder statistics buckets are hour-aligned.
+  let deviceHistory;
+  if (q.get('devices') === '1') {
+    states['sensor.washing_machine_power'] = { state: '0', attributes: { friendly_name: 'Washing Machine' } };
+    states['sensor.dishwasher_power'] = { state: '0', attributes: { friendly_name: 'Dishwasher' } };
+    const runHistory = (startHour, shape, days) => {
+      const points = [];
+      for (let d = 1; d <= days; d++) {
+        const dayStart = today.getTime() - d * 864e5;
+        for (let h = 0; h < 24; h++) {
+          const i = h - startHour;
+          points.push({ start: dayStart + h * 36e5, end: dayStart + (h + 1) * 36e5, mean: i >= 0 && i < shape.length ? shape[i] : 5 });
+        }
+      }
+      return points;
+    };
+    deviceHistory = {
+      'sensor.washing_machine_power': runHistory(19, [420, 680], 10),
+      'sensor.dishwasher_power': runHistory(8, [520, 860], 10),
+    };
+  }
+
   // predbat=1: a Predbat plan like the real predbat.best_*_limit entities (change points, %z offsets with no colon).
   // Windows are hours since midnight today: [start, end, target %].
   if (q.get('predbat') === '1') {
@@ -148,9 +173,23 @@
       incentive_events_entity: 'event.account_octoplus_power_down_events',
       ...(q.get('powerup') === '1' ? { power_up_events_entity: 'event.account_octoplus_power_up_events' } : {}),
       ...(q.get('predbat') === '1' ? { predbat_prefix: 'predbat' } : {}),
+      ...(deviceHistory ? { devices: Object.keys(deviceHistory) } : {}),
       ...JSON.parse(q.get('cfg') || '{}'), // e.g. cfg={"hours":0} to override card config
     });
-    el.hass = { states, themes: { darkMode: dark } };
+    el.hass = {
+      states,
+      themes: { darkMode: dark },
+      ...(deviceHistory
+        ? {
+            callWS: async (msg) => {
+              if (msg.type !== 'recorder/statistics_during_period') return {};
+              const out = {};
+              for (const id of msg.statistic_ids) out[id] = deviceHistory[id] || [];
+              return out;
+            },
+          }
+        : {}),
+    };
     document.getElementById('card').appendChild(el);
   };
   document.head.appendChild(script);
