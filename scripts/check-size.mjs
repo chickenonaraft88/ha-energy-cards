@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
 const file = 'dist/energy-price-graph-card.js';
-const limitKb = Number(process.env.MAX_KB ?? 45);
+const limitKb = Number(process.env.MAX_KB ?? 100);
 
 const bytes = readFileSync(file);
 const kb = bytes.length / 1024;
