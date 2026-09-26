@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildConfigForm, computeLabel } from '../src/form';
 
-type Entry = { name?: string; title?: string; schema?: Entry[] };
+type Entry = { name?: string; title?: string; schema?: Entry[]; selector?: unknown };
 
 const flatten = (schema: Entry[]): Entry[] => schema.flatMap((s) => (s.schema ? [s, ...flatten(s.schema)] : [s]));
 
@@ -20,5 +20,14 @@ describe('config form', () => {
 
   it('uses friendly labels for known fields', () => {
     expect(computeLabel({ name: 'height' })).toBe('Chart height (px)');
+  });
+
+  it('limits the devices entity picker to power sensors', () => {
+    const { schema } = buildConfigForm();
+    const devices = flatten(schema as Entry[]).find((s) => s.name === 'devices') as {
+      selector?: { entity?: { domain?: string; device_class?: string } };
+    };
+    expect(devices.selector?.entity?.domain).toBe('sensor');
+    expect(devices.selector?.entity?.device_class).toBe('power');
   });
 });
