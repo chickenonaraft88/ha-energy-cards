@@ -25,6 +25,8 @@ const LABELS: Record<string, string> = {
   predbat_prefix: 'Predbat entity prefix',
   predbat_rates: 'Show Predbat predicted rates',
   devices: 'Devices to schedule',
+  run_after: 'Run after',
+  run_after_max_wait: 'Run after: max wait (hours)',
 };
 
 const HELPERS: Record<string, string> = {
@@ -43,6 +45,10 @@ const HELPERS: Record<string, string> = {
   rate_multiplier: 'Applied to raw values. 100 converts £ to p.',
   devices:
     "Optional. Power sensors (watts, not energy/consumption totals); the card learns each one's typical run shape from its history and suggests the cheapest time to run it today.",
+  run_after:
+    'Optional. Devices that run after another one, as "device: the one it runs after" (e.g. sensor.tumble_dryer_power: sensor.washing_machine_power). Both must be in the devices above; they are scheduled together, so the pair is as cheap as possible as a whole.',
+  run_after_max_wait:
+    'How many hours a "run after" device may wait once the one before it finishes, if waiting is cheaper. Default 0: straight after.',
 };
 
 /**
@@ -66,6 +72,7 @@ export const buildConfigForm = () => ({
     { name: 'predbat_prefix', selector: { text: {} } },
     { name: 'predbat_rates', selector: { boolean: {} } },
     { name: 'devices', selector: { entity: { domain: 'sensor', device_class: 'power', multiple: true } } },
+    { name: 'run_after', selector: { object: {} } },
     {
       type: 'expandable',
       title: 'Advanced',
@@ -82,6 +89,7 @@ export const buildConfigForm = () => ({
         { name: 'hours', selector: { number: { min: 6, max: 48, mode: 'box' } } },
         { name: 'height', selector: { number: { min: 100, max: 500, mode: 'box' } } },
         { name: 'cheapest_window_hours', selector: { number: { min: 1, max: 12, mode: 'box' } } },
+        { name: 'run_after_max_wait', selector: { number: { min: 0, max: 12, mode: 'box' } } },
       ],
     },
   ],

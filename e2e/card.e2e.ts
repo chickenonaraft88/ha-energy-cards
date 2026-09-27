@@ -536,6 +536,30 @@ test('shows a best-time-to-run row per configured device, with a start time and 
   expect(errors).toEqual([]);
 });
 
+test('a run_after device starts when the one before it finishes, not in the same cheap slot', async ({ page }) => {
+  const washer = 'sensor.washing_machine_power';
+  const dryer = 'sensor.tumble_dryer_power';
+  const cfg = (runAfter: Record<string, string>) =>
+    encodeURIComponent(JSON.stringify({ devices: [washer, dryer], run_after: runAfter }));
+  const rows = page.locator('energy-price-graph-card .summary .row');
+  const minutes = async (i: number) => {
+    const [h, m] = (await rows.nth(i).locator('.time').innerText()).split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  // Scheduled on their own, both land in the same overnight dip.
+  await open(page, `theme=dark&devices=1&cfg=${cfg({})}`);
+  await expect(rows).toHaveCount(2);
+  expect(await minutes(0)).toBe(await minutes(1));
+
+  // Linked, the dryer follows the washer's 2h run.
+  const errors = await open(page, `theme=dark&devices=1&cfg=${cfg({ [dryer]: washer })}`);
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(1)).toContainText('Tumble Dryer');
+  expect(((await minutes(1)) - (await minutes(0)) + 1440) % 1440).toBe(120);
+  expect(errors).toEqual([]);
+});
+
 test('the device summary coexists with the Predbat legend and track', async ({ page }) => {
   const errors = await open(page, 'theme=dark&devices=1&predbat=1');
   await expect(page.locator('energy-price-graph-card .summary .row')).toHaveCount(2);

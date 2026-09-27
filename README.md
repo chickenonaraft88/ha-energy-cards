@@ -26,6 +26,12 @@ current_day_rates_entity: event.octopus_energy_electricity_<mpan>_<serial>_curre
 next_day_rates_entity: event.octopus_energy_electricity_<mpan>_<serial>_next_day_rates
 incentive_events_entity: event.octopus_energy_<account>_octoplus_power_down_events
 power_up_events_entity: event.octopus_energy_<account>_octoplus_power_up_events
+devices:
+  - sensor.washing_machine_power
+  - sensor.tumble_dryer_power
+  - sensor.dishwasher_power
+run_after:
+  sensor.tumble_dryer_power: sensor.washing_machine_power
 ```
 
 | Option | Default | Description |
@@ -50,6 +56,9 @@ power_up_events_entity: event.octopus_energy_<account>_octoplus_power_up_events
 | `hours` | `24` | Chart span, from the top of the current hour. |
 | `height` | `190` | Chart height in px. |
 | `cheapest_window_hours` | _(off)_ | Shades the cheapest contiguous run of this many hours (1-12) in the visible rates. |
+| `devices` | – | Power sensors (W) to suggest a best start time for. The card learns each one's typical run from 14 days of hourly history (it needs at least 3 runs) and lists the cheapest start in the visible rates, with its cost. |
+| `run_after` | – | Devices that run after another one, e.g. a tumble dryer after the washing machine: `device: the one it runs after`, both listed in `devices`. Linked devices are scheduled together, so the washer's start is picked for the cost of the pair and the dryer starts when it finishes, rather than both being told to go in the same cheap hour. Links can chain (washer, dryer, iron). |
+| `run_after_max_wait` | `0` | Hours (0-12) a `run_after` device may wait once the one before it finishes, if that is cheaper. `0` starts it straight after. |
 
 Hover over the chart (or tap it on a touch screen) to see a slot's time span and price, whether it falls in an incentive or power-up session or is a Predbat prediction, and, with `predbat_prefix` set, what Predbat's plan is doing then. Tap elsewhere to dismiss.
 

@@ -19,8 +19,11 @@ import {
   slotOverlapsSession,
 } from './data';
 import {
-  bestWindow,
+  type BestWindow,
+  bestChain,
+  buildChains,
   buildDeviceShape,
+  clampMaxWait,
   DEFAULT_IDLE_WATTS,
   findRuns,
   parseStatistics,
@@ -356,13 +359,42 @@ class EnergyPriceGraphCard extends LitElement {
     // Best-time-to-run rows: a device is only listed once its history yields a confident shape and a window that
     // fully fits the visible rates - never a placeholder "not enough data yet" row. Recomputing this runs
     // findRuns/buildDeviceShape/bestWindow per device, so it's skipped on a hover-only re-render (see willUpdate).
+    // Devices linked by `run_after` are placed together (see bestChain); a device without a confident shape
+    // breaks its sequence, so the ones after it are scheduled on their own rather than after a guess.
     if (!this._deviceRowsClean) {
       const devColors = deviceColors(dark);
-      this._deviceRows = (cfg.devices ?? [])
-        .map((id, i) => {
+      const devices = cfg.devices ?? [];
+      const maxWait = clampMaxWait(cfg.run_after_max_wait);
+      const windows = new Map<string, BestWindow>();
+      for (const chain of buildChains(devices, cfg.run_after)) {
+        let segment: Array<{ id: string; watts: number[] }> = [];
+        const flush = () => {
+          const wins = segment.length
+            ? bestChain(
+                segment.map((d) => d.watts),
+                rates,
+                start.getTime(),
+                end,
+                now,
+                maxWait,
+              )
+            : undefined;
+          wins?.forEach((w, j) => {
+            windows.set(segment[j].id, w);
+          });
+          segment = [];
+        };
+        for (const id of chain) {
           const stats = this._deviceStats[id];
           const shape = stats && buildDeviceShape(findRuns(stats, DEFAULT_IDLE_WATTS));
-          const win = shape && bestWindow(shape.hourlyWatts, rates, start.getTime(), end, now);
+          if (shape) segment.push({ id, watts: shape.hourlyWatts });
+          else flush();
+        }
+        flush();
+      }
+      this._deviceRows = devices
+        .map((id, i) => {
+          const win = windows.get(id);
           return win
             ? {
                 name: hass.states[id]?.attributes?.friendly_name ?? id,

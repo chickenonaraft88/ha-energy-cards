@@ -39,6 +39,8 @@
   // entity=pence: the rate entities report pence (use with cfg={"rate_multiplier":1}) instead of £
   // powerup=1: configures a mock Octoplus Power Up events entity, with a session right after the power-down one
   // devices=1: configures 2 mock power sensors with a hass.callWS stub returning synthetic run history for them
+  //   (a third, sensor.tumble_dryer_power, has history too but isn't configured: add it with cfg, e.g.
+  //   cfg={"devices":[...],"run_after":{"sensor.tumble_dryer_power":"sensor.washing_machine_power"}})
   const blank = q.get('blank') === '1'; // rate sensors report '' instead of a number
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   if (q.get('width')) document.getElementById('card').style.width = `${q.get('width')}px`;
@@ -110,6 +112,7 @@
   if (q.get('devices') === '1') {
     states['sensor.washing_machine_power'] = { state: '0', attributes: { friendly_name: 'Washing Machine' } };
     states['sensor.dishwasher_power'] = { state: '0', attributes: { friendly_name: 'Dishwasher' } };
+    states['sensor.tumble_dryer_power'] = { state: '0', attributes: { friendly_name: 'Tumble Dryer' } };
     const runHistory = (startHour, shape, days) => {
       const points = [];
       for (let d = 1; d <= days; d++) {
@@ -124,6 +127,8 @@
     deviceHistory = {
       'sensor.washing_machine_power': runHistory(19, [420, 680], 10),
       'sensor.dishwasher_power': runHistory(8, [520, 860], 10),
+      // Run straight after the washing machine every day.
+      'sensor.tumble_dryer_power': runHistory(21, [2100, 1600], 10),
     };
   }
 
@@ -173,7 +178,7 @@
       incentive_events_entity: 'event.account_octoplus_power_down_events',
       ...(q.get('powerup') === '1' ? { power_up_events_entity: 'event.account_octoplus_power_up_events' } : {}),
       ...(q.get('predbat') === '1' ? { predbat_prefix: 'predbat' } : {}),
-      ...(deviceHistory ? { devices: Object.keys(deviceHistory) } : {}),
+      ...(deviceHistory ? { devices: ['sensor.washing_machine_power', 'sensor.dishwasher_power'] } : {}),
       ...JSON.parse(q.get('cfg') || '{}'), // e.g. cfg={"hours":0} to override card config
     });
     el.hass = {
