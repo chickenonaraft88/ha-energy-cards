@@ -23,9 +23,9 @@ import {
   bestChain,
   buildChains,
   buildDeviceShape,
-  clampMaxWait,
   DEFAULT_IDLE_WATTS,
   findRuns,
+  parseRunAfter,
   parseStatistics,
   REFRESH_INTERVAL_MS,
   type StatPoint,
@@ -366,7 +366,9 @@ class EnergyPriceGraphCard extends LitElement {
     if (!this._deviceRowsClean) {
       const devColors = deviceColors(dark);
       const devices = cfg.devices ?? [];
-      const maxWait = clampMaxWait(cfg.run_after_max_wait);
+      const links = parseRunAfter(cfg.run_after);
+      // A chain's links are the first entry for each device, same as buildChains uses.
+      const maxWaitOf = (id: string) => links.find((l) => l.device === id)?.maxWait ?? 0;
       const rows: DeviceRow[] = [];
       const addRows = (segment: string[], wins: BestWindow[]) => {
         wins.forEach((win, j) => {
@@ -382,7 +384,7 @@ class EnergyPriceGraphCard extends LitElement {
         });
       };
       // Rows come out in sequence order, so a follower sits right under the device it runs after.
-      for (const chain of buildChains(devices, cfg.run_after)) {
+      for (const chain of buildChains(devices, links)) {
         let segment: Array<{ id: string; watts: number[] }> = [];
         const flush = () => {
           const wins = segment.length
@@ -392,7 +394,7 @@ class EnergyPriceGraphCard extends LitElement {
                 start.getTime(),
                 end,
                 now,
-                maxWait,
+                segment.map((d) => maxWaitOf(d.id)),
               )
             : undefined;
           if (wins)

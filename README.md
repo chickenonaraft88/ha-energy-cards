@@ -31,7 +31,9 @@ devices:
   - sensor.tumble_dryer_power
   - sensor.dishwasher_power
 run_after:
-  sensor.tumble_dryer_power: sensor.washing_machine_power
+  - device: sensor.tumble_dryer_power
+    after: sensor.washing_machine_power
+    max_wait: 1 # optional
 ```
 
 | Option | Default | Description |
@@ -57,8 +59,7 @@ run_after:
 | `height` | `190` | Chart height in px. |
 | `cheapest_window_hours` | _(off)_ | Shades the cheapest contiguous run of this many hours (1-12) in the visible rates. |
 | `devices` | – | Power sensors (W) to suggest a best start time for. The card learns each one's typical run from 14 days of hourly history (it needs at least 3 runs) and lists the cheapest start in the visible rates, with its cost. |
-| `run_after` | – | Devices that run after another one, e.g. a tumble dryer after the washing machine: `device: the one it runs after`, both listed in `devices`. Linked devices are scheduled together, so the washer's start is picked for the cost of the pair and the dryer starts when it finishes, rather than both being told to go in the same cheap hour. Links can chain (washer, dryer, iron). |
-| `run_after_max_wait` | `0` | Hours (0-12) a `run_after` device may wait once the one before it finishes, if that is cheaper. `0` starts it straight after. |
+| `run_after` | – | Devices that run after another one, e.g. a tumble dryer after the washing machine: a list of `device` / `after` pairs, both listed in `devices`, each with an optional `max_wait` (hours, 0-12, default 0) the device may wait once the other finishes if that is cheaper. Linked devices are scheduled together, so the washer's start is picked for the cost of the pair and the dryer starts when it finishes, rather than both being told to go in the same cheap hour, and the dryer is listed indented under the washer. Links can chain (washer, dryer, iron). The visual editor shows this as a list with device pickers on Home Assistant 2025.7 or later; older versions show a YAML box. |
 
 Hover over the chart (or tap it on a touch screen) to see a slot's time span and price, whether it falls in an incentive or power-up session or is a Predbat prediction, and, with `predbat_prefix` set, what Predbat's plan is doing then. Tap elsewhere to dismiss.
 

@@ -30,4 +30,25 @@ describe('config form', () => {
     expect(devices.selector?.entity?.domain).toBe('sensor');
     expect(devices.selector?.entity?.device_class).toBe('power');
   });
+
+  it('edits run_after as a list of device pickers, with an optional wait', () => {
+    const { schema } = buildConfigForm();
+    const runAfter = flatten(schema as Entry[]).find((s) => s.name === 'run_after') as {
+      selector: {
+        object: {
+          multiple?: boolean;
+          fields: Record<string, { required?: boolean; selector: { entity?: object; number?: object } }>;
+        };
+      };
+    };
+    const { multiple, fields } = runAfter.selector.object;
+    expect(multiple).toBe(true);
+    expect(Object.keys(fields)).toEqual(['device', 'after', 'max_wait']);
+    for (const key of ['device', 'after']) {
+      expect(fields[key].required).toBe(true);
+      expect(fields[key].selector.entity).toEqual({ domain: 'sensor', device_class: 'power' });
+    }
+    expect(fields.max_wait.required).toBeFalsy();
+    expect(fields.max_wait.selector.number).toBeDefined();
+  });
 });

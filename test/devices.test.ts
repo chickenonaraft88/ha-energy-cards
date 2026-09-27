@@ -7,7 +7,9 @@ import {
   clampMaxWait,
   findRuns,
   HISTORY_DAYS,
+  parseRunAfter,
   parseStatistics,
+  type RunAfterLink,
   type StatPoint,
   statisticsRequest,
 } from '../src/devices';
@@ -154,7 +156,7 @@ describe('bestChain', () => {
     expect(wins?.[1].start).toBeGreaterThanOrEqual(wins?.[0].end ?? Infinity);
   });
 
-  it('lets the second device wait up to maxWaitHours for a cheaper slot', () => {
+  it('lets a device wait up to its maxWaitHours for a cheaper slot', () => {
     // Two separate cheap hours, 01:00 and 05:00: the washer wants the first and the dryer the second, which
     // needs the dryer to wait 3h after the washer ends at 02:00.
     const twoDips: Rate[] = [];
@@ -163,14 +165,16 @@ describe('bestChain', () => {
       twoDips.push({ start: dayStart + h * HOUR, end: dayStart + h * HOUR + HALF_HOUR, value });
     }
     const starts = (wait: number) =>
-      bestChain([[1000], [1000]], twoDips, dayStart, dayEnd, dayStart, wait)?.map((w) => (w.start - dayStart) / HOUR);
+      bestChain([[1000], [1000]], twoDips, dayStart, dayEnd, dayStart, [0, wait])?.map(
+        (w) => (w.start - dayStart) / HOUR,
+      );
     expect(starts(0)).toEqual([0, 1]);
     expect(starts(2)).toEqual([0, 1]); // 05:00 is out of reach, so nothing beats the earliest equal-cost pair
     expect(starts(3)).toEqual([1, 5]);
   });
 
   it('prefers the shortest wait when waiting longer costs the same', () => {
-    const wins = bestChain([[1000], [1000]], rates, dayStart, dayEnd, dayStart, 3);
+    const wins = bestChain([[1000], [1000]], rates, dayStart, dayEnd, dayStart, [0, 3]);
     expect(wins?.map((w) => w.start)).toEqual([dayStart + 2 * HOUR, dayStart + 3 * HOUR]);
   });
 
@@ -194,36 +198,77 @@ describe('buildChains', () => {
   const washer = 'sensor.washer';
   const dryer = 'sensor.dryer';
   const dish = 'sensor.dishwasher';
+  const link = (device: string, after: string): RunAfterLink => ({ device, after, maxWait: 0 });
 
   it('keeps every device on its own without links', () => {
     expect(buildChains([washer, dryer, dish])).toEqual([[washer], [dryer], [dish]]);
   });
 
   it('puts a follower after the device it runs after, whatever the listed order', () => {
-    expect(buildChains([dryer, dish, washer], { [dryer]: washer })).toEqual([[dish], [washer, dryer]]);
+    expect(buildChains([dryer, dish, washer], [link(dryer, washer)])).toEqual([[dish], [washer, dryer]]);
   });
 
   it('follows links into longer sequences', () => {
     const iron = 'sensor.iron';
-    expect(buildChains([iron, dryer, washer], { [dryer]: washer, [iron]: dryer })).toEqual([[washer, dryer, iron]]);
+    expect(buildChains([iron, dryer, washer], [link(dryer, washer), link(iron, dryer)])).toEqual([
+      [washer, dryer, iron],
+    ]);
   });
 
   it('ignores links to devices that are not listed, and to the device itself', () => {
-    expect(buildChains([dryer, dish], { [dryer]: washer, [dish]: dish })).toEqual([[dryer], [dish]]);
+    expect(buildChains([dryer, dish], [link(dryer, washer), link(dish, dish)])).toEqual([[dryer], [dish]]);
   });
 
   it('gives a device only one follower, the first one listed', () => {
-    expect(buildChains([washer, dryer, dish], { [dryer]: washer, [dish]: washer })).toEqual([[washer, dryer], [dish]]);
+    expect(buildChains([washer, dryer, dish], [link(dryer, washer), link(dish, washer)])).toEqual([
+      [washer, dryer],
+      [dish],
+    ]);
+  });
+
+  it('uses only the first entry when a device is linked twice', () => {
+    expect(buildChains([washer, dryer, dish], [link(dryer, washer), link(dryer, dish)])).toEqual([
+      [washer, dryer],
+      [dish],
+    ]);
   });
 
   it('breaks a loop rather than dropping its devices', () => {
     // Links are taken in `devices` order, so the washer's (listed first) is kept and the dryer's closes the loop.
-    expect(buildChains([washer, dryer], { [dryer]: washer, [washer]: dryer })).toEqual([[dryer, washer]]);
+    expect(buildChains([washer, dryer], [link(dryer, washer), link(washer, dryer)])).toEqual([[dryer, washer]]);
+  });
+});
+
+describe('parseRunAfter', () => {
+  it('reads the list the visual editor writes', () => {
+    expect(
+      parseRunAfter([
+        { device: 'sensor.dryer', after: 'sensor.washer', max_wait: 2 },
+        { device: 'sensor.iron', after: 'sensor.dryer' },
+      ]),
+    ).toEqual([
+      { device: 'sensor.dryer', after: 'sensor.washer', maxWait: 2 },
+      { device: 'sensor.iron', after: 'sensor.dryer', maxWait: 0 },
+    ]);
   });
 
-  it('ignores a run_after that is not a mapping', () => {
-    expect(buildChains([washer, dryer], 'nonsense')).toEqual([[washer], [dryer]]);
-    expect(buildChains([washer, dryer], null)).toEqual([[washer], [dryer]]);
+  it('drops entries missing either device, and clamps the wait', () => {
+    expect(
+      parseRunAfter([
+        { device: 'sensor.dryer' },
+        { after: 'sensor.washer' },
+        { device: '', after: 'sensor.washer' },
+        null,
+        'sensor.dryer',
+        { device: 'sensor.dryer', after: 'sensor.washer', max_wait: 99 },
+      ]),
+    ).toEqual([{ device: 'sensor.dryer', after: 'sensor.washer', maxWait: 12 }]);
+  });
+
+  it('is empty for anything that is not a list', () => {
+    for (const v of [undefined, null, 'nonsense', { 'sensor.dryer': 'sensor.washer' }]) {
+      expect(parseRunAfter(v)).toEqual([]);
+    }
   });
 });
 

@@ -19,10 +19,10 @@ export const DEFAULT_IDLE_WATTS = 50;
 /** How much history to ask the recorder for. */
 export const HISTORY_DAYS = 14;
 
-/** Upper bound for `run_after_max_wait`, in hours. */
+/** Upper bound for a `run_after` entry's `max_wait`, in hours. */
 const MAX_WAIT_HOURS = 12;
 
-/** `run_after_max_wait` as a whole number of hours in 0-12; anything unusable is 0 (start straight after). */
+/** A `run_after` entry's `max_wait` as a whole number of hours in 0-12; anything unusable is 0 (straight after). */
 export const clampMaxWait = (hours: unknown): number => {
   const n = typeof hours === 'number' || typeof hours === 'string' ? Number(hours) : Number.NaN;
   return Number.isFinite(n) && n > 0 ? Math.min(MAX_WAIT_HOURS, Math.floor(n)) : 0;
@@ -155,7 +155,7 @@ export const bestWindow = (
 /**
  * Cheapest placement of devices that run one after another (e.g. a tumble dryer after the washing machine),
  * one window per shape, in order. Each device starts on the hour between the end of the one before it and
- * `maxWaitHours` later, so the first device's start is chosen for the cost of the whole sequence rather than
+ * `maxWaitHours[i]` hours later (missing = 0, straight after), so the first device's start is chosen for the cost of the whole sequence rather than
  * its own - running the washer a bit earlier can be worth it if that lets the dryer land in a cheap slot too.
  * Same rules as `bestWindow` otherwise: every window must fit before `end` with full rate coverage, and nothing
  * starts before `now`. Ties go to the earliest start and the shortest wait. Undefined if any shape is empty or
@@ -167,12 +167,11 @@ export const bestChain = (
   start: number,
   end: number,
   now: number = start,
-  maxWaitHours = 0,
+  maxWaitHours: number[] = [],
 ): BestWindow[] | undefined => {
   if (!shapes.length || shapes.some((s) => s.length === 0)) return undefined;
-  const maxWait = Math.max(0, Math.floor(maxWaitHours));
   // Cheapest placement of shapes[i..] given shapes[i] starts at one of `starts`; shapes are few and waits short,
-  // so plain recursion is enough (at most (maxWait + 1) ^ (shapes - 1) placements per first start).
+  // so plain recursion is enough (at most 13 ^ (shapes - 1) placements per first start).
   const place = (i: number, starts: number[]): BestWindow[] | undefined => {
     let best: BestWindow[] | undefined;
     let bestCost = Infinity;
@@ -185,7 +184,7 @@ export const bestChain = (
         i + 1 < shapes.length
           ? place(
               i + 1,
-              Array.from({ length: maxWait + 1 }, (_, g) => stop + g * HOUR_MS),
+              Array.from({ length: clampMaxWait(maxWaitHours[i + 1]) + 1 }, (_, g) => stop + g * HOUR_MS),
             )
           : [];
       if (!rest) continue;
@@ -202,14 +201,35 @@ export const bestChain = (
   return place(0, firstStarts);
 };
 
+/** One `run_after` entry: `device` runs after `after`, waiting up to `maxWait` hours if that is cheaper. */
+export interface RunAfterLink {
+  device: string;
+  after: string;
+  maxWait: number;
+}
+
 /**
- * Groups `devices` into sequences to schedule together, following `runAfter` (follower entity -> the entity it
- * runs after), each sequence in run order. Every device lands in exactly one sequence; one with no valid link is
- * a sequence of its own. A link is ignored when either end isn't in `devices`, when the device it points at
- * already has a follower (the first one listed in `devices` wins), or when it would close a loop.
+ * The `run_after` list (`[{ device, after, max_wait }]`, what the visual editor's picker list writes) as links.
+ * Entries missing either entity are dropped, and so is anything that isn't a list.
  */
-export const buildChains = (devices: string[], runAfter?: unknown): string[][] => {
-  const links = runAfter && typeof runAfter === 'object' ? (runAfter as Record<string, unknown>) : {};
+export const parseRunAfter = (raw: unknown): RunAfterLink[] => {
+  if (!Array.isArray(raw)) return [];
+  const links: RunAfterLink[] = [];
+  for (const entry of raw) {
+    const e = entry && typeof entry === 'object' ? (entry as Record<string, unknown>) : {};
+    if (typeof e.device !== 'string' || typeof e.after !== 'string' || !e.device || !e.after) continue;
+    links.push({ device: e.device, after: e.after, maxWait: clampMaxWait(e.max_wait) });
+  }
+  return links;
+};
+
+/**
+ * Groups `devices` into sequences to schedule together, following `links`, each sequence in run order. Every
+ * device lands in exactly one sequence; one with no valid link is a sequence of its own. A link is ignored when
+ * either end isn't in `devices`, when its device already has an earlier link, when the device it runs after
+ * already has a follower (the first follower listed in `devices` wins), or when it would close a loop.
+ */
+export const buildChains = (devices: string[], links: RunAfterLink[] = []): string[][] => {
   const listed = new Set(devices);
   const next = new Map<string, string>();
   const prev = new Map<string, string>();
@@ -219,8 +239,8 @@ export const buildChains = (devices: string[], runAfter?: unknown): string[][] =
     return h;
   };
   for (const follower of devices) {
-    const lead = links[follower];
-    if (typeof lead !== 'string' || !listed.has(lead) || lead === follower) continue;
+    const lead = links.find((l) => l.device === follower)?.after;
+    if (lead === undefined || !listed.has(lead) || lead === follower) continue;
     if (next.has(lead) || headOf(lead) === follower) continue;
     next.set(lead, follower);
     prev.set(follower, lead);

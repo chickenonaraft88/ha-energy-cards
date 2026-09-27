@@ -40,7 +40,7 @@
   // powerup=1: configures a mock Octoplus Power Up events entity, with a session right after the power-down one
   // devices=1: configures 2 mock power sensors with a hass.callWS stub returning synthetic run history for them
   //   (a third, sensor.tumble_dryer_power, has history too but isn't configured: add it with cfg, e.g.
-  //   cfg={"devices":[...],"run_after":{"sensor.tumble_dryer_power":"sensor.washing_machine_power"}})
+  //   cfg={"devices":[...],"run_after":[{"device":"sensor.tumble_dryer_power","after":"sensor.washing_machine_power"}]})
   const blank = q.get('blank') === '1'; // rate sensors report '' instead of a number
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   if (q.get('width')) document.getElementById('card').style.width = `${q.get('width')}px`;

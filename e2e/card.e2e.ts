@@ -539,7 +539,7 @@ test('shows a best-time-to-run row per configured device, with a start time and 
 test('a run_after device starts when the one before it finishes, not in the same cheap slot', async ({ page }) => {
   const washer = 'sensor.washing_machine_power';
   const dryer = 'sensor.tumble_dryer_power';
-  const cfg = (runAfter: Record<string, string>) =>
+  const cfg = (runAfter: Array<{ device: string; after: string }>) =>
     encodeURIComponent(JSON.stringify({ devices: [washer, dryer], run_after: runAfter }));
   const rows = page.locator('energy-price-graph-card .summary .row');
   const minutes = async (i: number) => {
@@ -548,12 +548,12 @@ test('a run_after device starts when the one before it finishes, not in the same
   };
 
   // Scheduled on their own, both land in the same overnight dip.
-  await open(page, `theme=dark&devices=1&cfg=${cfg({})}`);
+  await open(page, `theme=dark&devices=1&cfg=${cfg([])}`);
   await expect(rows).toHaveCount(2);
   expect(await minutes(0)).toBe(await minutes(1));
 
   // Linked, the dryer follows the washer's 2h run.
-  const errors = await open(page, `theme=dark&devices=1&cfg=${cfg({ [dryer]: washer })}`);
+  const errors = await open(page, `theme=dark&devices=1&cfg=${cfg([{ device: dryer, after: washer }])}`);
   await expect(rows).toHaveCount(2);
   await expect(rows.nth(1)).toContainText('Tumble Dryer');
   expect(((await minutes(1)) - (await minutes(0)) + 1440) % 1440).toBe(120);
@@ -565,7 +565,7 @@ test('a run_after device is listed under the one it runs after, indented like a 
   const dryer = 'sensor.tumble_dryer_power';
   const dish = 'sensor.dishwasher_power';
   // The dryer is listed first, but belongs under the washer; the dishwasher isn't linked to anything.
-  const cfg = encodeURIComponent(JSON.stringify({ devices: [dryer, dish, washer], run_after: { [dryer]: washer } }));
+  const cfg = encodeURIComponent(JSON.stringify({ devices: [dryer, dish, washer], run_after: [{ device: dryer, after: washer }] }));
   const errors = await open(page, `theme=dark&devices=1&width=360&cfg=${cfg}`);
   const rows = page.locator('energy-price-graph-card .summary .row');
   await expect(rows).toHaveCount(3);
