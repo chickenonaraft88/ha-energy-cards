@@ -560,6 +560,27 @@ test('a run_after device starts when the one before it finishes, not in the same
   expect(errors).toEqual([]);
 });
 
+test('a run_after device is listed under the one it runs after, indented like a sub-item', async ({ page }) => {
+  const washer = 'sensor.washing_machine_power';
+  const dryer = 'sensor.tumble_dryer_power';
+  const dish = 'sensor.dishwasher_power';
+  // The dryer is listed first, but belongs under the washer; the dishwasher isn't linked to anything.
+  const cfg = encodeURIComponent(JSON.stringify({ devices: [dryer, dish, washer], run_after: { [dryer]: washer } }));
+  const errors = await open(page, `theme=dark&devices=1&width=360&cfg=${cfg}`);
+  const rows = page.locator('energy-price-graph-card .summary .row');
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0)).toContainText('Dishwasher');
+  await expect(rows.nth(1)).toContainText('Washing Machine');
+  await expect(rows.nth(2)).toContainText('Tumble Dryer');
+  const dotX = (i: number) => rows.nth(i).locator('i').evaluate((el) => el.getBoundingClientRect().left);
+  expect(await dotX(1)).toBe(await dotX(0));
+  expect(await dotX(2)).toBeGreaterThan((await dotX(1)) + 8);
+  // The indent doesn't push the time and cost out of line with the other rows.
+  const timeRight = (i: number) => rows.nth(i).locator('.cost').evaluate((el) => el.getBoundingClientRect().right);
+  expect(await timeRight(2)).toBeCloseTo(await timeRight(1), 0);
+  expect(errors).toEqual([]);
+});
+
 test('the device summary coexists with the Predbat legend and track', async ({ page }) => {
   const errors = await open(page, 'theme=dark&devices=1&predbat=1');
   await expect(page.locator('energy-price-graph-card .summary .row')).toHaveCount(2);

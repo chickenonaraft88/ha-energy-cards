@@ -62,6 +62,8 @@ interface DeviceRow {
   color: string;
   start: number;
   cost: number;
+  /** Runs after the row above it (`run_after`), so it's indented under it like a sub-item. */
+  follows: boolean;
 }
 
 class EnergyPriceGraphCard extends LitElement {
@@ -365,7 +367,21 @@ class EnergyPriceGraphCard extends LitElement {
       const devColors = deviceColors(dark);
       const devices = cfg.devices ?? [];
       const maxWait = clampMaxWait(cfg.run_after_max_wait);
-      const windows = new Map<string, BestWindow>();
+      const rows: DeviceRow[] = [];
+      const addRows = (segment: string[], wins: BestWindow[]) => {
+        wins.forEach((win, j) => {
+          const id = segment[j];
+          rows.push({
+            name: hass.states[id]?.attributes?.friendly_name ?? id,
+            // Colour by position in `devices`, so it doesn't change when a device is moved under another.
+            color: devColors[devices.indexOf(id) % devColors.length],
+            start: win.start,
+            cost: win.cost,
+            follows: j > 0,
+          });
+        });
+      };
+      // Rows come out in sequence order, so a follower sits right under the device it runs after.
       for (const chain of buildChains(devices, cfg.run_after)) {
         let segment: Array<{ id: string; watts: number[] }> = [];
         const flush = () => {
@@ -379,9 +395,11 @@ class EnergyPriceGraphCard extends LitElement {
                 maxWait,
               )
             : undefined;
-          wins?.forEach((w, j) => {
-            windows.set(segment[j].id, w);
-          });
+          if (wins)
+            addRows(
+              segment.map((d) => d.id),
+              wins,
+            );
           segment = [];
         };
         for (const id of chain) {
@@ -392,19 +410,7 @@ class EnergyPriceGraphCard extends LitElement {
         }
         flush();
       }
-      this._deviceRows = devices
-        .map((id, i) => {
-          const win = windows.get(id);
-          return win
-            ? {
-                name: hass.states[id]?.attributes?.friendly_name ?? id,
-                color: devColors[i % devColors.length],
-                start: win.start,
-                cost: win.cost,
-              }
-            : undefined;
-        })
-        .filter((r): r is DeviceRow => r !== undefined);
+      this._deviceRows = rows;
       this._deviceRowsClean = true;
     }
     const deviceRows = this._deviceRows ?? [];
@@ -501,7 +507,7 @@ class EnergyPriceGraphCard extends LitElement {
       }
       ${
         deviceRows.length
-          ? html`<div class="summary">${deviceRows.map((r) => html`<div class="row"><i style="background:${r.color}"></i><span class="name">${r.name}</span><span class="time">${fmtTime(r.start)}</span><span class="cost">${formatCost(r.cost, unit)}</span></div>`)}</div>`
+          ? html`<div class="summary">${deviceRows.map((r) => html`<div class="row ${r.follows ? 'follows' : ''}"><i style="background:${r.color}"></i><span class="name">${r.name}</span><span class="time">${fmtTime(r.start)}</span><span class="cost">${formatCost(r.cost, unit)}</span></div>`)}</div>`
           : nothing
       }
     </ha-card>`;
@@ -613,6 +619,7 @@ class EnergyPriceGraphCard extends LitElement {
     }
     .summary { margin-top: 10px; padding: 10px 16px 0; border-top: 1px solid var(--divider-color, rgba(120, 120, 128, 0.24)); }
     .summary .row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+    .summary .row.follows { padding-left: 18px; }
     .summary i { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .summary .name { flex-grow: 1; font-size: 13px; font-weight: 600; }
     .summary .time { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
