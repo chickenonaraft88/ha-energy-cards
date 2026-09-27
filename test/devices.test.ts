@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  bestChain,
   bestWindow,
+  buildChains,
   buildDeviceShape,
+  clampMaxWait,
   findRuns,
   HISTORY_DAYS,
+  parseRunAfter,
   parseStatistics,
+  type RunAfterLink,
   type StatPoint,
   statisticsRequest,
 } from '../src/devices';
@@ -107,6 +112,175 @@ describe('bestWindow', () => {
     const now = dayStart + 14 * HOUR + 45 * 60000;
     const win = bestWindow([1000, 1000], rates, dayStart, dayStart + 24 * HOUR, now);
     expect(win?.start).toBeGreaterThanOrEqual(now);
+  });
+});
+
+describe('bestChain', () => {
+  const dayStart = base;
+  // Half-hourly rates in pence: cheap 02:00-04:00, a little cheaper 04:00-05:00, otherwise mid-priced.
+  const rates: Rate[] = [];
+  for (let h = 0; h < 24; h += 0.5) {
+    const value = h >= 2 && h < 4 ? 8 : h >= 4 && h < 5 ? 20 : 25;
+    rates.push({ start: dayStart + h * HOUR, end: dayStart + h * HOUR + HALF_HOUR, value });
+  }
+  const dayEnd = dayStart + 24 * HOUR;
+
+  it('starts the second device straight after the first, costing each window separately', () => {
+    const wins = bestChain([[1000], [1000]], rates, dayStart, dayEnd);
+    expect(wins).toEqual([
+      { start: dayStart + 2 * HOUR, end: dayStart + 3 * HOUR, cost: 8 },
+      { start: dayStart + 3 * HOUR, end: dayStart + 4 * HOUR, cost: 8 },
+    ]);
+  });
+
+  it('picks the first start for the whole sequence, not just the first device', () => {
+    // Alone, the washer would take 02:00-04:00 and push a heavy dryer out of the cheap band. Starting the washer
+    // earlier costs it more but lets the dryer use the cheap hours, which is cheaper overall.
+    const washer = [300, 300];
+    const dryer = [2000, 2000];
+    expect(bestWindow(washer, rates, dayStart, dayEnd)?.start).toBe(dayStart + 2 * HOUR);
+    const wins = bestChain([washer, dryer], rates, dayStart, dayEnd);
+    expect(wins?.map((w) => w.start)).toEqual([dayStart, dayStart + 2 * HOUR]);
+  });
+
+  it('never overlaps the devices, even when both would rather run in the same cheap hours', () => {
+    const wins = bestChain(
+      [
+        [1000, 1000],
+        [1000, 1000],
+      ],
+      rates,
+      dayStart,
+      dayEnd,
+    );
+    expect(wins?.[1].start).toBeGreaterThanOrEqual(wins?.[0].end ?? Infinity);
+  });
+
+  it('lets a device wait up to its maxWaitHours for a cheaper slot', () => {
+    // Two separate cheap hours, 01:00 and 05:00: the washer wants the first and the dryer the second, which
+    // needs the dryer to wait 3h after the washer ends at 02:00.
+    const twoDips: Rate[] = [];
+    for (let h = 0; h < 24; h += 0.5) {
+      const value = Math.floor(h) === 1 || Math.floor(h) === 5 ? 5 : 30;
+      twoDips.push({ start: dayStart + h * HOUR, end: dayStart + h * HOUR + HALF_HOUR, value });
+    }
+    const starts = (wait: number) =>
+      bestChain([[1000], [1000]], twoDips, dayStart, dayEnd, dayStart, [0, wait])?.map(
+        (w) => (w.start - dayStart) / HOUR,
+      );
+    expect(starts(0)).toEqual([0, 1]);
+    expect(starts(2)).toEqual([0, 1]); // 05:00 is out of reach, so nothing beats the earliest equal-cost pair
+    expect(starts(3)).toEqual([1, 5]);
+  });
+
+  it('prefers the shortest wait when waiting longer costs the same', () => {
+    const wins = bestChain([[1000], [1000]], rates, dayStart, dayEnd, dayStart, [0, 3]);
+    expect(wins?.map((w) => w.start)).toEqual([dayStart + 2 * HOUR, dayStart + 3 * HOUR]);
+  });
+
+  it('is undefined when the whole sequence does not fit before the end', () => {
+    expect(bestChain([[1000, 1000], [1000]], rates, dayStart + 22 * HOUR, dayEnd)).toBeUndefined();
+  });
+
+  it('is undefined for an empty shape anywhere in the sequence', () => {
+    expect(bestChain([[1000], []], rates, dayStart, dayEnd)).toBeUndefined();
+    expect(bestChain([], rates, dayStart, dayEnd)).toBeUndefined();
+  });
+
+  it('matches bestWindow for a single device', () => {
+    expect(bestChain([[2000, 200]], rates, dayStart, dayEnd)).toEqual([
+      bestWindow([2000, 200], rates, dayStart, dayEnd),
+    ]);
+  });
+});
+
+describe('buildChains', () => {
+  const washer = 'sensor.washer';
+  const dryer = 'sensor.dryer';
+  const dish = 'sensor.dishwasher';
+  const link = (device: string, after: string): RunAfterLink => ({ device, after, maxWait: 0 });
+
+  it('keeps every device on its own without links', () => {
+    expect(buildChains([washer, dryer, dish])).toEqual([[washer], [dryer], [dish]]);
+  });
+
+  it('puts a follower after the device it runs after, whatever the listed order', () => {
+    expect(buildChains([dryer, dish, washer], [link(dryer, washer)])).toEqual([[dish], [washer, dryer]]);
+  });
+
+  it('follows links into longer sequences', () => {
+    const iron = 'sensor.iron';
+    expect(buildChains([iron, dryer, washer], [link(dryer, washer), link(iron, dryer)])).toEqual([
+      [washer, dryer, iron],
+    ]);
+  });
+
+  it('ignores links to devices that are not listed, and to the device itself', () => {
+    expect(buildChains([dryer, dish], [link(dryer, washer), link(dish, dish)])).toEqual([[dryer], [dish]]);
+  });
+
+  it('gives a device only one follower, the first one listed', () => {
+    expect(buildChains([washer, dryer, dish], [link(dryer, washer), link(dish, washer)])).toEqual([
+      [washer, dryer],
+      [dish],
+    ]);
+  });
+
+  it('uses only the first entry when a device is linked twice', () => {
+    expect(buildChains([washer, dryer, dish], [link(dryer, washer), link(dryer, dish)])).toEqual([
+      [washer, dryer],
+      [dish],
+    ]);
+  });
+
+  it('breaks a loop rather than dropping its devices', () => {
+    // Links are taken in `devices` order, so the washer's (listed first) is kept and the dryer's closes the loop.
+    expect(buildChains([washer, dryer], [link(dryer, washer), link(washer, dryer)])).toEqual([[dryer, washer]]);
+  });
+});
+
+describe('parseRunAfter', () => {
+  it('reads the list the visual editor writes', () => {
+    expect(
+      parseRunAfter([
+        { device: 'sensor.dryer', after: 'sensor.washer', max_wait: 2 },
+        { device: 'sensor.iron', after: 'sensor.dryer' },
+      ]),
+    ).toEqual([
+      { device: 'sensor.dryer', after: 'sensor.washer', maxWait: 2 },
+      { device: 'sensor.iron', after: 'sensor.dryer', maxWait: 0 },
+    ]);
+  });
+
+  it('drops entries missing either device, and clamps the wait', () => {
+    expect(
+      parseRunAfter([
+        { device: 'sensor.dryer' },
+        { after: 'sensor.washer' },
+        { device: '', after: 'sensor.washer' },
+        null,
+        'sensor.dryer',
+        { device: 'sensor.dryer', after: 'sensor.washer', max_wait: 99 },
+      ]),
+    ).toEqual([{ device: 'sensor.dryer', after: 'sensor.washer', maxWait: 12 }]);
+  });
+
+  it('is empty for anything that is not a list', () => {
+    for (const v of [undefined, null, 'nonsense', { 'sensor.dryer': 'sensor.washer' }]) {
+      expect(parseRunAfter(v)).toEqual([]);
+    }
+  });
+});
+
+describe('clampMaxWait', () => {
+  it('defaults to 0 for missing or unusable values', () => {
+    for (const v of [undefined, null, '', 'x', -2, Number.NaN, true]) expect(clampMaxWait(v)).toBe(0);
+  });
+
+  it('rounds down to whole hours and caps at 12', () => {
+    expect(clampMaxWait(2.7)).toBe(2);
+    expect(clampMaxWait('3')).toBe(3);
+    expect(clampMaxWait(40)).toBe(12);
   });
 });
 

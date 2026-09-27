@@ -47,6 +47,16 @@ export interface EnergyPriceGraphCardConfig {
   cheapest_window_hours?: number;
   /** Power sensors to suggest a cheapest run time for, learned from each one's usage history. */
   devices?: string[];
+  /** Devices that run after another (both in `devices`), e.g. a tumble dryer after the washing machine. */
+  run_after?: RunAfterEntry[];
+}
+
+export interface RunAfterEntry {
+  device: string;
+  /** The device this one runs after. */
+  after: string;
+  /** Hours it may wait once `after` finishes, if that is cheaper (default 0: straight after). */
+  max_wait?: number;
 }
 
 export interface Rate {

@@ -19,10 +19,13 @@ import {
   slotOverlapsSession,
 } from './data';
 import {
-  bestWindow,
+  type BestWindow,
+  bestChain,
+  buildChains,
   buildDeviceShape,
   DEFAULT_IDLE_WATTS,
   findRuns,
+  parseRunAfter,
   parseStatistics,
   REFRESH_INTERVAL_MS,
   type StatPoint,
@@ -59,6 +62,8 @@ interface DeviceRow {
   color: string;
   start: number;
   cost: number;
+  /** Runs after the row above it (`run_after`), so it's indented under it like a sub-item. */
+  follows: boolean;
 }
 
 class EnergyPriceGraphCard extends LitElement {
@@ -356,23 +361,58 @@ class EnergyPriceGraphCard extends LitElement {
     // Best-time-to-run rows: a device is only listed once its history yields a confident shape and a window that
     // fully fits the visible rates - never a placeholder "not enough data yet" row. Recomputing this runs
     // findRuns/buildDeviceShape/bestWindow per device, so it's skipped on a hover-only re-render (see willUpdate).
+    // Devices linked by `run_after` are placed together (see bestChain); a device without a confident shape
+    // breaks its sequence, so the ones after it are scheduled on their own rather than after a guess.
     if (!this._deviceRowsClean) {
       const devColors = deviceColors(dark);
-      this._deviceRows = (cfg.devices ?? [])
-        .map((id, i) => {
+      const devices = cfg.devices ?? [];
+      const links = parseRunAfter(cfg.run_after);
+      // A chain's links are the first entry for each device, same as buildChains uses.
+      const maxWaitOf = (id: string) => links.find((l) => l.device === id)?.maxWait ?? 0;
+      const rows: DeviceRow[] = [];
+      const addRows = (segment: string[], wins: BestWindow[]) => {
+        wins.forEach((win, j) => {
+          const id = segment[j];
+          rows.push({
+            name: hass.states[id]?.attributes?.friendly_name ?? id,
+            // Colour by position in `devices`, so it doesn't change when a device is moved under another.
+            color: devColors[devices.indexOf(id) % devColors.length],
+            start: win.start,
+            cost: win.cost,
+            follows: j > 0,
+          });
+        });
+      };
+      // Rows come out in sequence order, so a follower sits right under the device it runs after.
+      for (const chain of buildChains(devices, links)) {
+        let segment: Array<{ id: string; watts: number[] }> = [];
+        const flush = () => {
+          const wins = segment.length
+            ? bestChain(
+                segment.map((d) => d.watts),
+                rates,
+                start.getTime(),
+                end,
+                now,
+                segment.map((d) => maxWaitOf(d.id)),
+              )
+            : undefined;
+          if (wins)
+            addRows(
+              segment.map((d) => d.id),
+              wins,
+            );
+          segment = [];
+        };
+        for (const id of chain) {
           const stats = this._deviceStats[id];
           const shape = stats && buildDeviceShape(findRuns(stats, DEFAULT_IDLE_WATTS));
-          const win = shape && bestWindow(shape.hourlyWatts, rates, start.getTime(), end, now);
-          return win
-            ? {
-                name: hass.states[id]?.attributes?.friendly_name ?? id,
-                color: devColors[i % devColors.length],
-                start: win.start,
-                cost: win.cost,
-              }
-            : undefined;
-        })
-        .filter((r): r is DeviceRow => r !== undefined);
+          if (shape) segment.push({ id, watts: shape.hourlyWatts });
+          else flush();
+        }
+        flush();
+      }
+      this._deviceRows = rows;
       this._deviceRowsClean = true;
     }
     const deviceRows = this._deviceRows ?? [];
@@ -469,7 +509,7 @@ class EnergyPriceGraphCard extends LitElement {
       }
       ${
         deviceRows.length
-          ? html`<div class="summary">${deviceRows.map((r) => html`<div class="row"><i style="background:${r.color}"></i><span class="name">${r.name}</span><span class="time">${fmtTime(r.start)}</span><span class="cost">${formatCost(r.cost, unit)}</span></div>`)}</div>`
+          ? html`<div class="summary">${deviceRows.map((r) => html`<div class="row ${r.follows ? 'follows' : ''}"><i style="background:${r.color}"></i><span class="name">${r.name}</span><span class="time">${fmtTime(r.start)}</span><span class="cost">${formatCost(r.cost, unit)}</span></div>`)}</div>`
           : nothing
       }
     </ha-card>`;
@@ -581,6 +621,7 @@ class EnergyPriceGraphCard extends LitElement {
     }
     .summary { margin-top: 10px; padding: 10px 16px 0; border-top: 1px solid var(--divider-color, rgba(120, 120, 128, 0.24)); }
     .summary .row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+    .summary .row.follows { padding-left: 18px; }
     .summary i { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .summary .name { flex-grow: 1; font-size: 13px; font-weight: 600; }
     .summary .time { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
