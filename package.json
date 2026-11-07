@@ -20,11 +20,11 @@
     "lit": "^3.2.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.3",
+    "@biomejs/biome": "2.6.4",
     "@playwright/test": "^1.64.1",
     "esbuild": "^0.28.2",
     "puppeteer-core": "^25.16.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   }
 }
